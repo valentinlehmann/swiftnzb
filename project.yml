@@ -23,6 +23,8 @@ targets:
       - path: SwiftNZB
       - path: Localizable.xcstrings
         buildPhase: resources
+      - path: AppIcon.icon
+        buildPhase: resources
     scheme: {}
     dependencies:
       - target: SwiftNZBWidgets
@@ -44,6 +46,7 @@ targets:
         ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: 1
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
         PROVISIONING_PROFILE_SPECIFIER: ""
         IPHONEOS_DEPLOYMENT_TARGET: 26.0
         CODE_SIGN_IDENTITY: ""

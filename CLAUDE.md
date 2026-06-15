@@ -124,6 +124,9 @@ SwiftNZBWidgets/             Live Activity (WidgetKit)
 - Don't add GPL code (no par2cmdline) — App Store + clean-room PAR2 is intentional.
 - Local-package SOURCES under `Packages/` are committed; `.gitignore` deliberately does NOT
   ignore `Packages/` (only `.build/`, `.swiftpm/`, `Package.resolved`).
-- App icon is a placeholder `AppIcon.appiconset` for now; swap in an Icon Composer `.icon`
-  (as iobs does) when artwork exists, and update `project.yml` accordingly. Don't reference a
-  missing icon file — `actool` crashes.
+- App icon is `AppIcon.icon` (Icon Composer) at the repo root, referenced as a resource in
+  `project.yml` with `ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon` +
+  `ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES` (as iobs does). Don't add an
+  `AppIcon.appiconset` alongside it — two "AppIcon" sources conflict, and a set referencing a
+  missing file crashes `actool`. A missing/empty icon also fails TestFlight upload with a 409
+  (missing 120/152px icons + `CFBundleIconName`).
