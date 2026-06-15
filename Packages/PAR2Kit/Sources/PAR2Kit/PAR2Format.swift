@@ -1,0 +1,199 @@
+//
+//  PAR2Format.swift
+//  PAR2Kit
+//
+//  Clean-room PAR2 packet parser + recovery-set aggregation. Parses the packets out of one or
+//  more `.par2` files, validates each packet's MD5, and collapses the (heavily duplicated)
+//  packets into a single coherent recovery set.
+//
+
+import Foundation
+import CryptoKit
+
+// MARK: - Little-endian byte helpers
+
+private extension Array where Element == UInt8 {
+    func u32LE(_ offset: Int) -> UInt32 {
+        UInt32(self[offset]) | UInt32(self[offset + 1]) << 8 |
+        UInt32(self[offset + 2]) << 16 | UInt32(self[offset + 3]) << 24
+    }
+    func u64LE(_ offset: Int) -> UInt64 {
+        var v: UInt64 = 0
+        for i in 0..<8 { v |= UInt64(self[offset + i]) << (8 * i) }
+        return v
+    }
+}
+
+// MARK: - Packets
+
+enum PAR2PacketType {
+    case main, fileDescription, inputSliceChecksum, recoverySlice, creator, unknown
+}
+
+struct PAR2Packet {
+    let type: PAR2PacketType
+    let recoverySetID: [UInt8]   // 16 bytes
+    let body: [UInt8]
+}
+
+enum PAR2Parser {
+    static let magic: [UInt8] = Array("PAR2\0PKT".utf8)
+
+    private static let typeMain: [UInt8] = Array("PAR 2.0\0Main\0\0\0\0".utf8)
+    private static let typeFileDesc: [UInt8] = Array("PAR 2.0\0FileDesc".utf8)
+    private static let typeIFSC: [UInt8] = Array("PAR 2.0\0IFSC\0\0\0\0".utf8)
+    private static let typeRecvSlice: [UInt8] = Array("PAR 2.0\0RecvSlic".utf8)
+    private static let typeCreator: [UInt8] = Array("PAR 2.0\0Creator\0".utf8)
+
+    /// Parse all valid packets in a `.par2` file's bytes (MD5-validated).
+    static func parse(_ data: Data) -> [PAR2Packet] {
+        let bytes = [UInt8](data)
+        var packets: [PAR2Packet] = []
+        var i = 0
+        let n = bytes.count
+
+        while i + 64 <= n {
+            // Find the next magic.
+            guard matches(bytes, at: i, magic) else { i += 1; continue }
+
+            let length = Int(bytes.u64LE(i + 8))
+            guard length >= 64, length % 4 == 0, i + length <= n else { i += 1; continue }
+
+            let hash = Array(bytes[(i + 16)..<(i + 32)])
+            let signed = Array(bytes[(i + 32)..<(i + length)])   // recoverySetID + type + body
+            let computed = Array(Insecure.MD5.hash(data: Data(signed)))
+            guard hash == computed else { i += 1; continue }
+
+            let recoverySetID = Array(bytes[(i + 32)..<(i + 48)])
+            let typeField = Array(bytes[(i + 48)..<(i + 64)])
+            let body = Array(bytes[(i + 64)..<(i + length)])
+            packets.append(PAR2Packet(type: classify(typeField), recoverySetID: recoverySetID, body: body))
+            i += length
+        }
+        return packets
+    }
+
+    private static func matches(_ bytes: [UInt8], at offset: Int, _ pattern: [UInt8]) -> Bool {
+        guard offset + pattern.count <= bytes.count else { return false }
+        for k in 0..<pattern.count where bytes[offset + k] != pattern[k] { return false }
+        return true
+    }
+
+    private static func classify(_ type: [UInt8]) -> PAR2PacketType {
+        switch type {
+        case typeMain: return .main
+        case typeFileDesc: return .fileDescription
+        case typeIFSC: return .inputSliceChecksum
+        case typeRecvSlice: return .recoverySlice
+        case typeCreator: return .creator
+        default: return .unknown
+        }
+    }
+}
+
+// MARK: - Recovery set model
+
+struct PAR2FileDescription {
+    let fileID: [UInt8]        // 16
+    let fullMD5: [UInt8]       // 16
+    let md5_16k: [UInt8]       // 16
+    let length: Int
+    let name: String
+}
+
+struct PAR2SliceChecksum {
+    let md5: [UInt8]           // 16
+    let crc32: UInt32
+}
+
+struct PAR2RecoverySlice {
+    let exponent: Int
+    let data: [UInt8]
+}
+
+/// A fully-assembled recovery set built from all `.par2` files.
+struct PAR2RecoverySet {
+    var sliceSize: Int = 0
+    var recoverySetFileIDs: [[UInt8]] = []                       // ordered (from Main packet)
+    var fileDescriptions: [[UInt8]: PAR2FileDescription] = [:]   // keyed by fileID
+    var sliceChecksums: [[UInt8]: [PAR2SliceChecksum]] = [:]     // keyed by fileID
+    var recoverySlices: [PAR2RecoverySlice] = []                 // deduped by exponent
+
+    var isValid: Bool { sliceSize > 0 && !recoverySetFileIDs.isEmpty }
+
+    /// Files in recovery-set order, each with its description (skips any missing descriptions).
+    var orderedFiles: [PAR2FileDescription] {
+        recoverySetFileIDs.compactMap { fileDescriptions[$0] }
+    }
+
+    static func build(fromParFiles urls: [URL]) -> PAR2RecoverySet {
+        var set = PAR2RecoverySet()
+        var seenExponents = Set<Int>()
+
+        for url in urls {
+            guard let data = try? Data(contentsOf: url) else { continue }
+            for packet in PAR2Parser.parse(data) {
+                switch packet.type {
+                case .main where set.sliceSize == 0:
+                    parseMain(packet.body, into: &set)
+                case .main:
+                    break
+                case .fileDescription:
+                    if let fd = parseFileDescription(packet.body) {
+                        set.fileDescriptions[fd.fileID] = fd
+                    }
+                case .inputSliceChecksum:
+                    parseIFSC(packet.body, into: &set)
+                case .recoverySlice:
+                    if packet.body.count > 4 {
+                        let exponent = Int(packet.body.u32LE(0))
+                        if seenExponents.insert(exponent).inserted {
+                            set.recoverySlices.append(
+                                PAR2RecoverySlice(exponent: exponent, data: Array(packet.body[4...])))
+                        }
+                    }
+                case .creator, .unknown:
+                    break
+                }
+            }
+        }
+        return set
+    }
+
+    private static func parseMain(_ body: [UInt8], into set: inout PAR2RecoverySet) {
+        guard body.count >= 12 else { return }
+        set.sliceSize = Int(body.u64LE(0))
+        let count = Int(body.u32LE(8))
+        var offset = 12
+        for _ in 0..<count {
+            guard offset + 16 <= body.count else { break }
+            set.recoverySetFileIDs.append(Array(body[offset..<(offset + 16)]))
+            offset += 16
+        }
+    }
+
+    private static func parseFileDescription(_ body: [UInt8]) -> PAR2FileDescription? {
+        guard body.count >= 56 else { return nil }
+        let fileID = Array(body[0..<16])
+        let fullMD5 = Array(body[16..<32])
+        let md5_16k = Array(body[32..<48])
+        let length = Int(body.u64LE(48))
+        let nameBytes = Array(body[56...]).prefix { $0 != 0 }
+        let name = String(decoding: nameBytes, as: UTF8.self)
+        return PAR2FileDescription(fileID: fileID, fullMD5: fullMD5, md5_16k: md5_16k, length: length, name: name)
+    }
+
+    private static func parseIFSC(_ body: [UInt8], into set: inout PAR2RecoverySet) {
+        guard body.count >= 16 else { return }
+        let fileID = Array(body[0..<16])
+        var checksums: [PAR2SliceChecksum] = []
+        var offset = 16
+        while offset + 20 <= body.count {
+            let md5 = Array(body[offset..<(offset + 16)])
+            let crc = body.u32LE(offset + 16)
+            checksums.append(PAR2SliceChecksum(md5: md5, crc32: crc))
+            offset += 20
+        }
+        if set.sliceChecksums[fileID] == nil { set.sliceChecksums[fileID] = checksums }
+    }
+}

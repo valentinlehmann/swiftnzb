@@ -12,6 +12,9 @@ packages:
     path: Packages/DownloadEngine
   PAR2Kit:
     path: Packages/PAR2Kit
+  Unrar:
+    url: https://github.com/mtgto/Unrar.swift
+    from: 0.5.3
 
 targets:
   SwiftNZB:
@@ -30,6 +33,7 @@ targets:
       - target: SwiftNZBWidgets
       - package: DownloadEngine
       - package: PAR2Kit
+      - package: Unrar
     settings:
       base:
         # iPhone + iPad. The UI is size-class adaptive (TabView on compact,

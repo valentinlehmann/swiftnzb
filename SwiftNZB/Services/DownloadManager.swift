@@ -13,6 +13,7 @@
 import Foundation
 import Observation
 import DownloadEngine
+import PAR2Kit
 
 @MainActor
 @Observable
@@ -220,15 +221,19 @@ final class DownloadManager {
 
     private func handleFinished(_ jobID: UUID, result: EngineResult) {
         streamTask = nil
-        activeJobID = nil
         aggregateBytesPerSecond = 0
         activeConnections = 0
         let intent = activeIntent
         activeIntent = .none
 
+        // On a successful download, keep the job active and run post-processing.
+        if case let .completed(_, missing) = result {
+            Task { await self.runPostProcessing(jobID, missingSegments: missing) }
+            return
+        }
+
+        activeJobID = nil
         switch result {
-        case let .completed(_, missing):
-            finalizeCompletedJob(jobID, missingSegments: missing)
         case .failed(let reason):
             updateJob(jobID) { $0.status = .failed; $0.errorMessage = reason }
         case .cancelled:
@@ -241,40 +246,127 @@ final class DownloadManager {
                 updateJob(jobID) { $0.status = .cancelled }
                 FileLocationService.shared.removeWorkingDirectory(forJobID: jobID)
             }
+        case .completed:
+            break  // handled above
         }
 
         save()
-        if activeJobID == nil { LiveActivityService.shared.end() }
+        LiveActivityService.shared.end()
         startNextIfNeeded()
     }
 
-    /// Move the engine's assembled output into the Files-visible completed folder.
-    /// (PAR2 verify/repair + unrar will slot in here in the next phase.)
-    private func finalizeCompletedJob(_ jobID: UUID, missingSegments: Int) {
+    // MARK: - Post-processing (verify → repair → extract → cleanup)
+
+    private func setStep(_ jobID: UUID, _ step: PostProcessingStep?) {
+        updateJob(jobID) { job in
+            job.currentStep = step
+            if let step { job.status = step.jobStatus }
+        }
+        updateLiveActivity(jobID)
+    }
+
+    /// Runs the post-download pipeline on a completed job. Heavy work (PAR2, unrar) runs off the
+    /// main actor; status/step updates happen on the main actor between phases.
+    private func runPostProcessing(_ jobID: UUID, missingSegments: Int) async {
         guard let job = jobs.first(where: { $0.id == jobID }) else { return }
         let workDir = FileLocationService.shared.workingDirectory(forJobID: jobID)
         let destDir = FileLocationService.shared.completedDirectory(
             for: job, mode: SettingsStore.shared.settings.folderMode)
         FileLocationService.shared.ensureDirectory(destDir)
+        let settings = SettingsStore.shared.settings
 
-        if let items = try? FileManager.default.contentsOfDirectory(at: workDir, includingPropertiesForKeys: nil) {
-            for item in items where item.lastPathComponent != "checkpoint.json" && item.pathExtension != "part" {
-                let dest = destDir.appendingPathComponent(item.lastPathComponent)
-                try? FileManager.default.removeItem(at: dest)
-                try? FileManager.default.moveItem(at: item, to: dest)
+        var notes: [String] = []
+        if missingSegments > 0 { notes.append("\(missingSegments) article(s) were missing.") }
+
+        // 1. PAR2 verify (+ repair).
+        let par2URLs = (try? FileManager.default.contentsOfDirectory(at: workDir, includingPropertiesForKeys: nil))?
+            .filter { $0.pathExtension.lowercased() == "par2" } ?? []
+        if settings.par2VerifyEnabled, !par2URLs.isEmpty {
+            setStep(jobID, .verify)
+            let verify = await Task.detached { PAR2Job(par2URLs: par2URLs, directory: workDir).verify() }.value
+            if !verify.isComplete {
+                if settings.par2RepairEnabled, verify.isRepairable {
+                    setStep(jobID, .repair)
+                    let repair = await Task.detached { PAR2Job(par2URLs: par2URLs, directory: workDir).repair() }.value
+                    switch repair {
+                    case .repaired(let n): notes.append("Repaired \(n) block(s) with PAR2.")
+                    case .insufficientRecoveryData(let miss, let avail):
+                        notes.append("Not enough PAR2 data to repair (need \(miss), have \(avail)).")
+                    case .failed(let reason): notes.append("PAR2 repair failed: \(reason)")
+                    case .notNeeded: break
+                    }
+                } else if !verify.isRepairable {
+                    notes.append("Files are damaged and there isn't enough PAR2 data to repair.")
+                }
             }
         }
+
+        // 2. Extract RAR archives.
+        var didExtract = false
+        if settings.unrarEnabled, !ArchiveExtractor.firstVolumeArchives(in: workDir).isEmpty {
+            setStep(jobID, .extract)
+            let outcome = await Task.detached { ArchiveExtractor.extract(in: workDir, to: destDir) }.value
+            switch outcome {
+            case .extracted(let n): didExtract = n > 0
+            case .passwordRequired: notes.append("Archive is password-protected; not extracted.")
+            case .failed(let reason): notes.append("Extraction failed: \(reason)")
+            case .noArchives: break
+            }
+        }
+
+        // 3. Cleanup + move remaining payload to the completed folder.
+        setStep(jobID, .cleanup)
+        let deleteArchives = didExtract && settings.deleteArchivesAfterExtract
+        await Task.detached {
+            Self.finalizeFiles(workDir: workDir, destDir: destDir, didExtract: didExtract, deleteArchives: deleteArchives)
+        }.value
         FileLocationService.shared.removeWorkingDirectory(forJobID: jobID)
 
+        // 4. Mark complete.
         updateJob(jobID) { j in
             j.status = .completed
+            j.currentStep = nil
             j.completedAt = Date()
             j.downloadedBytes = j.totalBytes
             j.completedFolderRelativePath = destDir.lastPathComponent
-            if missingSegments > 0 {
-                j.errorMessage = "Completed with \(missingSegments) missing segment(s). PAR2 repair is coming in a later update."
+            j.errorMessage = notes.isEmpty ? nil : notes.joined(separator: " ")
+        }
+        activeJobID = nil
+        save()
+        LiveActivityService.shared.end()
+        startNextIfNeeded()
+    }
+
+    /// Move payload to `destDir`; delete or relocate archive/par2 files per settings.
+    nonisolated private static func finalizeFiles(workDir: URL, destDir: URL, didExtract: Bool, deleteArchives: Bool) {
+        guard let items = try? FileManager.default.contentsOfDirectory(at: workDir, includingPropertiesForKeys: nil) else { return }
+        for item in items {
+            let name = item.lastPathComponent
+            if name == "checkpoint.json" || item.pathExtension.lowercased() == "part" { continue }
+            if didExtract, isArchiveFile(name) {
+                if deleteArchives { try? FileManager.default.removeItem(at: item) }
+                else { moveInto(destDir, item) }
+            } else {
+                moveInto(destDir, item)
             }
         }
+    }
+
+    nonisolated private static func moveInto(_ destDir: URL, _ item: URL) {
+        let dest = destDir.appendingPathComponent(item.lastPathComponent)
+        try? FileManager.default.removeItem(at: dest)
+        try? FileManager.default.moveItem(at: item, to: dest)
+    }
+
+    nonisolated private static func isArchiveFile(_ name: String) -> Bool {
+        let lower = name.lowercased()
+        if lower.hasSuffix(".rar") || lower.hasSuffix(".par2") { return true }
+        // Old-style split volumes: .r00/.r01… and .001/.002…
+        if let ext = lower.split(separator: ".").last, ext.count == 3 {
+            if ext.first == "r", ext.dropFirst().allSatisfy(\.isNumber) { return true }
+            if ext.allSatisfy(\.isNumber) { return true }
+        }
+        return false
     }
 
     private func networkChanged(online: Bool, expensive: Bool) {
