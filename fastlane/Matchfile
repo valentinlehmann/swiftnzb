@@ -1,0 +1,11 @@
+git_url("https://github.com/valentinlehmann/fastlane-match")
+
+storage_mode("git")
+
+type("appstore") # The default type, can be: appstore, adhoc, enterprise or development
+
+# Both bundle IDs match should fetch/create certs + profiles for (app + widget extension).
+app_identifier([
+  "de.valentinlehmann.swiftnzb",
+  "de.valentinlehmann.swiftnzb.widgets"
+])

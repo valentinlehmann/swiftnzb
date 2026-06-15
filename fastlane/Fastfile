@@ -1,0 +1,53 @@
+# This file contains the fastlane.tools configuration
+# Documentation: https://docs.fastlane.tools
+
+default_platform(:ios)
+
+platform :ios do
+  desc "Push a new beta build to TestFlight"
+  lane :beta do
+    setup_ci if ENV['CI']
+    api_key = load_api_key
+    match(type: 'appstore')
+    update_build_number
+    build_app(scheme: "SwiftNZB")
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: true
+    )
+  end
+end
+
+desc "Register the app + widget App IDs on the Apple Developer portal (one-time, before match)"
+lane :register_ids do
+  # Main app: create the developer-portal App ID and the App Store Connect record.
+  produce(
+    app_identifier: "de.valentinlehmann.swiftnzb",
+    app_name: "SwiftNZB"
+  )
+  # Widget extension: only the developer-portal App ID is needed — app extensions don't get
+  # their own App Store Connect record, so skip it.
+  produce(
+    app_identifier: "de.valentinlehmann.swiftnzb.widgets",
+    app_name: "SwiftNZB Widgets",
+    skip_itc: true
+  )
+end
+
+desc "Load App Store Connect API key"
+lane :load_api_key do
+  app_store_connect_api_key(
+    duration: 300, # This token is valid for 300s
+    key_id: ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"],
+    issuer_id: ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
+    key_content: ENV["APP_STORE_CONNECT_API_KEY_CONTENT"],
+    is_key_content_base64: true,
+    in_house: false
+  )
+end
+
+desc "Set build number to current date/time"
+lane :update_build_number do
+  build_number = Time.new.strftime("%Y%m%d%H%M")
+  increment_build_number(build_number: build_number)
+end

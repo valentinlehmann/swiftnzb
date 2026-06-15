@@ -1,0 +1,6 @@
+# Single value: upload_to_testflight / produce read this. match reads the full list from the Matchfile.
+app_identifier("de.valentinlehmann.swiftnzb")
+apple_id("info@valentinlehmann.de") # Apple Developer Portal username
+
+itc_team_id("125680288") # App Store Connect Team ID
+team_id("68BLC88PQ9") # Developer Portal Team ID

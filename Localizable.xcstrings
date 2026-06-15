@@ -1,0 +1,228 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "About" : {
+
+    },
+    "Add" : {
+
+    },
+    "Add NZB" : {
+
+    },
+    "Add Server" : {
+
+    },
+    "Add to Queue" : {
+
+    },
+    "Add your Usenet server to start downloading NZB files." : {
+
+    },
+    "Assembling" : {
+
+    },
+    "Authentication" : {
+
+    },
+    "Cancel" : {
+
+    },
+    "Cancelled" : {
+
+    },
+    "Cleaning up" : {
+
+    },
+    "Clear" : {
+
+    },
+    "Completed" : {
+
+    },
+    "Completed and cancelled downloads appear here." : {
+
+    },
+    "Connected successfully." : {
+
+    },
+    "Connections" : {
+
+    },
+    "Default" : {
+
+    },
+    "Delete" : {
+
+    },
+    "Delete archives after extraction" : {
+
+    },
+    "Done" : {
+
+    },
+    "Download" : {
+
+    },
+    "Download Removed" : {
+
+    },
+    "Downloading" : {
+
+    },
+    "Edit Server" : {
+
+    },
+    "Extract RAR archives" : {
+
+    },
+    "Extracting" : {
+
+    },
+    "Failed" : {
+
+    },
+    "Files" : {
+
+    },
+    "Folders" : {
+
+    },
+    "History" : {
+
+    },
+    "Host" : {
+
+    },
+    "Import Failed" : {
+
+    },
+    "Job" : {
+
+    },
+    "Large downloads need the app open — iOS can't run Usenet downloads unattended in the background. The app makes opportunistic progress when possible and resumes where it left off." : {
+
+    },
+    "Max connections" : {
+
+    },
+    "Name" : {
+
+    },
+    "Network" : {
+
+    },
+    "No Downloads" : {
+
+    },
+    "No Files" : {
+
+    },
+    "No History" : {
+
+    },
+    "OK" : {
+
+    },
+    "Output layout" : {
+
+    },
+    "PAR2 repair and RAR extraction are coming in a later update; these preferences are saved now." : {
+
+    },
+    "Password" : {
+
+    },
+    "Pause" : {
+
+    },
+    "Pause All" : {
+
+    },
+    "Pause Download" : {
+
+    },
+    "Pause on cellular" : {
+
+    },
+    "Paused" : {
+
+    },
+    "Performance" : {
+
+    },
+    "Port" : {
+
+    },
+    "Post-Processing" : {
+
+    },
+    "Queue" : {
+
+    },
+    "Queued" : {
+
+    },
+    "Repairing" : {
+
+    },
+    "Resume" : {
+
+    },
+    "Resume All" : {
+
+    },
+    "Resume Download" : {
+
+    },
+    "Save" : {
+
+    },
+    "Server" : {
+
+    },
+    "Servers" : {
+
+    },
+    "Settings" : {
+
+    },
+    "SwiftNZB" : {
+
+    },
+    "Tap + to import an NZB file." : {
+
+    },
+    "Test Connection" : {
+
+    },
+    "The output folder is empty." : {
+
+    },
+    "Total size" : {
+
+    },
+    "Use SSL" : {
+
+    },
+    "Username" : {
+
+    },
+    "Verify & repair with PAR2" : {
+
+    },
+    "Verifying" : {
+
+    },
+    "Version" : {
+
+    },
+    "Waiting for network…" : {
+
+    },
+    "Welcome to SwiftNZB" : {
+
+    }
+  },
+  "version" : "1.0"
+}
