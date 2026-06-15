@@ -8,9 +8,13 @@ import SwiftUI
 struct AddServerView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel: AddServerViewModel
+    /// True when presented as a sheet (no navigation back button), so a Cancel button is shown.
+    /// When pushed (e.g. from Settings), the navigation back button already cancels.
+    private let isModal: Bool
 
-    init(existing: ServerAccount? = nil) {
+    init(existing: ServerAccount? = nil, isModal: Bool = false) {
         _viewModel = State(initialValue: AddServerViewModel(existing: existing))
+        self.isModal = isModal
     }
 
     var body: some View {
@@ -72,8 +76,10 @@ struct AddServerView: View {
                 }
                 .disabled(!viewModel.canSave)
             }
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }
+            if isModal {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
             }
         }
     }

@@ -47,7 +47,7 @@ private struct OnboardingView: View {
             .navigationTitle("SwiftNZB")
         }
         .sheet(isPresented: $showingAddServer) {
-            NavigationStack { AddServerView() }
+            NavigationStack { AddServerView(isModal: true) }
         }
     }
 }

@@ -58,7 +58,7 @@ struct SettingsView: View {
             } header: {
                 Text("Post-Processing")
             } footer: {
-                Text("PAR2 repair and RAR extraction are coming in a later update; these preferences are saved now.")
+                Text("After downloading, SwiftNZB verifies (and repairs) files using PAR2 recovery data, then extracts RAR archives into the completed folder.")
             }
 
             Section("Folders") {
