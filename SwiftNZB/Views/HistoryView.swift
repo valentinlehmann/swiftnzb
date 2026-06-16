@@ -28,8 +28,8 @@ struct HistoryView: View {
     @State private var manager = DownloadManager.shared
     @State private var sort: HistorySort = .date
     @State private var grid = false
+    @State private var editing = false
     @State private var selection = Set<UUID>()
-    @State private var editMode: EditMode = .inactive
 
     private var jobs: [DownloadJob] { sorted(manager.historyJobs) }
 
@@ -46,22 +46,31 @@ struct HistoryView: View {
         }
         .navigationTitle("History")
         .navigationDestination(for: UUID.self) { JobDetailView(jobID: $0) }
-        .environment(\.editMode, $editMode)
         .toolbar { toolbar }
-        .onChange(of: editMode.isEditing) { _, editing in if !editing { selection.removeAll() } }
+        .onChange(of: editing) { _, isEditing in if !isEditing { selection.removeAll() } }
     }
 
     // MARK: - List
 
     private var listContent: some View {
-        List(selection: $selection) {
+        List {
             ForEach(jobs) { job in
-                NavigationLink(value: job.id) { row(job) }
-                    .swipeActions {
-                        Button(role: .destructive) { manager.removeFromHistory(job.id) } label: {
-                            Label("Delete", systemImage: "trash")
+                if editing {
+                    Button { toggle(job.id) } label: {
+                        HStack(spacing: 12) {
+                            selectionMark(job.id)
+                            row(job)
                         }
                     }
+                    .buttonStyle(.plain)
+                } else {
+                    NavigationLink(value: job.id) { row(job) }
+                        .swipeActions {
+                            Button(role: .destructive) { manager.removeFromHistory(job.id) } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+                }
             }
         }
     }
@@ -76,7 +85,9 @@ struct HistoryView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            Spacer()
         }
+        .contentShape(Rectangle())
     }
 
     // MARK: - Grid
@@ -85,9 +96,9 @@ struct HistoryView: View {
         ScrollView {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
                 ForEach(jobs) { job in
-                    if editMode.isEditing {
+                    if editing {
                         gridCell(job)
-                            .overlay(alignment: .topTrailing) { selectionMark(job.id) }
+                            .overlay(alignment: .topTrailing) { selectionMark(job.id).padding(8) }
                             .onTapGesture { toggle(job.id) }
                     } else {
                         NavigationLink(value: job.id) { gridCell(job) }
@@ -117,9 +128,7 @@ struct HistoryView: View {
     }
 
     private func selectionMark(_ id: UUID) -> some View {
-        Image(systemName: selection.contains(id) ? "checkmark.circle.fill" : "circle")
-            .foregroundStyle(selection.contains(id) ? Color.accentColor : Color.secondary)
-            .padding(8)
+        CheckboxView(isChecked: selection.contains(id))
     }
 
     // MARK: - Toolbar
@@ -128,15 +137,13 @@ struct HistoryView: View {
     private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
             if !manager.historyJobs.isEmpty {
-                // A plain button toggling our own @State editMode — EditButton only drives the
-                // ambient editMode, which the List/toolbar here don't observe.
-                Button(editMode.isEditing ? "Done" : "Edit") {
-                    withAnimation { editMode = editMode.isEditing ? .inactive : .active }
+                Button(editing ? "Done" : "Edit") {
+                    withAnimation { editing.toggle() }
                 }
             }
         }
         ToolbarItemGroup(placement: .topBarTrailing) {
-            if editMode.isEditing {
+            if editing {
                 Button(role: .destructive) {
                     manager.removeFromHistory(selection)
                     selection.removeAll()
@@ -152,7 +159,7 @@ struct HistoryView: View {
                         }
                     }
                     Button {
-                        grid.toggle()
+                        withAnimation { grid.toggle() }
                     } label: {
                         Label(grid ? "List View" : "Grid View", systemImage: grid ? "list.bullet" : "square.grid.2x2")
                     }
