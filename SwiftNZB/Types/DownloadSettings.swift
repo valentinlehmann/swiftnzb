@@ -48,7 +48,7 @@ struct DownloadSettings: Codable, Equatable, Sendable {
         folderMode: .perJobSubfolder,
         bandwidthCapKBps: 0,
         pauseOnCellular: false,
-        requireExternalPowerForBackground: false,
+        requireExternalPowerForBackground: true,
         keepCompletedHistoryDays: 30,
         defaultServerID: nil
     )
