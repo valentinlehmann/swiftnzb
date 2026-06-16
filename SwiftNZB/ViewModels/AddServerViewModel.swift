@@ -15,17 +15,24 @@ final class AddServerViewModel {
     }
 
     var name: String
-    var host: String
-    var portText: String
+    // Connection-relevant fields reset the test result so a green check always reflects the
+    // values currently on screen (and a fresh test is required again after an edit).
+    var host: String { didSet { invalidateTest() } }
+    var portText: String { didSet { invalidateTest() } }
     var useSSL: Bool {
-        didSet { if portWasDefault(oldUseSSL: oldValue) { portText = String(ServerAccount.defaultPort(useSSL: useSSL)) } }
+        didSet {
+            if portWasDefault(oldUseSSL: oldValue) { portText = String(ServerAccount.defaultPort(useSSL: useSSL)) }
+            invalidateTest()
+        }
     }
-    var username: String
-    var password: String
+    var username: String { didSet { invalidateTest() } }
+    var password: String { didSet { invalidateTest() } }
     var maxConnectionsText: String
     var testState: TestState = .idle
 
     private let editingID: UUID?
+
+    private func invalidateTest() { if testState != .idle { testState = .idle } }
 
     init(existing: ServerAccount? = nil) {
         if let s = existing {
@@ -53,6 +60,10 @@ final class AddServerViewModel {
     var port: Int { Int(portText) ?? ServerAccount.defaultPort(useSSL: useSSL) }
     var maxConnections: Int { max(1, Int(maxConnectionsText) ?? 20) }
     var canSave: Bool { !host.trimmingCharacters(in: .whitespaces).isEmpty }
+
+    /// A new server must pass a connection test before it can be saved; editing an existing one
+    /// does not force a re-test.
+    var canCommit: Bool { canSave && (isEditing || testState == .success) }
 
     private func portWasDefault(oldUseSSL: Bool) -> Bool {
         Int(portText) == ServerAccount.defaultPort(useSSL: oldUseSSL)

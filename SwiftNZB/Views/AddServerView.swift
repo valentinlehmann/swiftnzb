@@ -63,6 +63,9 @@ struct AddServerView: View {
                     Text(message).font(.caption).foregroundStyle(.red)
                 } else if case .success = viewModel.testState {
                     Text("Connected successfully.").font(.caption).foregroundStyle(.green)
+                } else if !viewModel.isEditing {
+                    Text("Test the connection before adding this server.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
             }
         }
@@ -74,7 +77,7 @@ struct AddServerView: View {
                     viewModel.save()
                     dismiss()
                 }
-                .disabled(!viewModel.canSave)
+                .disabled(!viewModel.canCommit)
             }
             if isModal {
                 ToolbarItem(placement: .cancellationAction) {

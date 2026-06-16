@@ -171,6 +171,12 @@ final class DownloadManager {
 
         streamTask = Task { [weak self] in
             guard let self else { return }
+            // Fail fast if the server can't be reached/authenticated, instead of showing a
+            // download that never makes progress.
+            if let failure = await ServerProbe.test(config) {
+                self.handleFinished(job.id, result: .failed(reason: failure))
+                return
+            }
             let stream = await self.engine.run(job: spec, server: config)
             for await event in stream {
                 self.handle(event, jobID: job.id)
