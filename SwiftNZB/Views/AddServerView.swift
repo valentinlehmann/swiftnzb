@@ -19,6 +19,13 @@ struct AddServerView: View {
 
     var body: some View {
         Form {
+            if let serverID = viewModel.editingServerID {
+                Section("Usage") {
+                    ServerUsageCard(serverID: serverID)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                }
+            }
+
             Section("Server") {
                 TextField("Name", text: $viewModel.name)
                 TextField("Host", text: $viewModel.host)

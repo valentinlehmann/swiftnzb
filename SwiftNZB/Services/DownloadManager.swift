@@ -342,6 +342,9 @@ final class DownloadManager {
             j.completedFolderRelativePath = destDir.lastPathComponent
             j.errorMessage = notes.isEmpty ? nil : notes.joined(separator: " ")
         }
+        if let serverID = server(for: job)?.id {
+            ServerUsageStore.shared.record(serverID: serverID, bytes: job.totalBytes)
+        }
         activeJobID = nil
         save()
         LiveActivityService.shared.end()

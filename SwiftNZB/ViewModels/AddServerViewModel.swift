@@ -57,6 +57,7 @@ final class AddServerViewModel {
     }
 
     var isEditing: Bool { editingID != nil }
+    var editingServerID: UUID? { editingID }
     var port: Int { Int(portText) ?? ServerAccount.defaultPort(useSSL: useSSL) }
     var maxConnections: Int { max(1, Int(maxConnectionsText) ?? 20) }
     var canSave: Bool { !host.trimmingCharacters(in: .whitespaces).isEmpty }
