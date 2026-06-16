@@ -127,7 +127,13 @@ struct HistoryView: View {
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
-            if !manager.historyJobs.isEmpty { EditButton() }
+            if !manager.historyJobs.isEmpty {
+                // A plain button toggling our own @State editMode — EditButton only drives the
+                // ambient editMode, which the List/toolbar here don't observe.
+                Button(editMode.isEditing ? "Done" : "Edit") {
+                    withAnimation { editMode = editMode.isEditing ? .inactive : .active }
+                }
+            }
         }
         ToolbarItemGroup(placement: .topBarTrailing) {
             if editMode.isEditing {
