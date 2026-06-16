@@ -408,6 +408,7 @@ final class DownloadManager {
 
     private func server(for job: DownloadJob) -> ServerAccount? {
         if let id = job.assignedServerID, let account = ServerStore.shared.account(id) { return account }
+        if let id = SettingsStore.shared.settings.defaultServerID, let account = ServerStore.shared.account(id) { return account }
         return ServerStore.shared.primaryServer
     }
 

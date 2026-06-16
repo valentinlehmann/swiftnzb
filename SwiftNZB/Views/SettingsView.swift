@@ -9,6 +9,18 @@ struct SettingsView: View {
     @State private var servers = ServerStore.shared
     @Bindable private var settingsStore = SettingsStore.shared
 
+    /// The server currently used as the default (explicit setting, else the primary account).
+    private var effectiveDefaultServerID: UUID? {
+        settingsStore.settings.defaultServerID ?? servers.primaryServer?.id
+    }
+
+    private var defaultServerBinding: Binding<UUID?> {
+        Binding(
+            get: { effectiveDefaultServerID },
+            set: { settingsStore.settings.defaultServerID = $0 }
+        )
+    }
+
     private var speedLimitEnabled: Binding<Bool> {
         Binding(
             get: { settingsStore.settings.bandwidthCapKBps > 0 },
@@ -31,16 +43,24 @@ struct SettingsView: View {
 
     var body: some View {
         List {
-            Section("Servers") {
+            Section {
                 ForEach(servers.accounts) { account in
                     NavigationLink {
                         AddServerView(existing: account)
                     } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(account.name)
-                            Text(verbatim: "\(account.host):\(account.port)\(account.useSSL ? " · SSL" : "")")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(account.name)
+                                Text(verbatim: "\(account.host):\(account.port)\(account.useSSL ? " · SSL" : "")")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            if account.id == effectiveDefaultServerID {
+                                Spacer()
+                                Text("Default")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                     .swipeActions {
@@ -54,6 +74,17 @@ struct SettingsView: View {
                 } label: {
                     Label("Add Server", systemImage: "plus")
                 }
+                if servers.accounts.count > 1 {
+                    Picker("Default server", selection: defaultServerBinding) {
+                        ForEach(servers.accounts) { account in
+                            Text(account.name).tag(UUID?.some(account.id))
+                        }
+                    }
+                }
+            } header: {
+                Text("Servers")
+            } footer: {
+                Text("The default server is preselected when you add a download. Picking a different one there updates this default.")
             }
 
             Section("Connections") {

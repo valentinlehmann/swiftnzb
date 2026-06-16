@@ -35,6 +35,8 @@ final class ImportCoordinator {
         guard var job = pendingJob else { return }
         job.name = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? job.name : name
         job.assignedServerID = serverID
+        // Remember the pick as the new default so it's preselected next time.
+        if let serverID { SettingsStore.shared.settings.defaultServerID = serverID }
         DownloadManager.shared.enqueue(job)
         AppRouter.shared.section = .queue
         clear()

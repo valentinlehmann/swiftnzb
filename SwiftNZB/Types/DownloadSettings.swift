@@ -36,6 +36,8 @@ struct DownloadSettings: Codable, Equatable, Sendable {
     var requireExternalPowerForBackground: Bool
     /// Auto-prune completed history older than this many days (0 = keep forever).
     var keepCompletedHistoryDays: Int
+    /// Preselected server in the import sheet; updated to whatever the user last picked there.
+    var defaultServerID: UUID?
 
     static let `default` = DownloadSettings(
         maxGlobalConnections: 20,
@@ -47,7 +49,8 @@ struct DownloadSettings: Codable, Equatable, Sendable {
         bandwidthCapKBps: 0,
         pauseOnCellular: false,
         requireExternalPowerForBackground: false,
-        keepCompletedHistoryDays: 30
+        keepCompletedHistoryDays: 30,
+        defaultServerID: nil
     )
 
     // Migration-safe decoder so adding a preference later doesn't break stored/synced settings.
@@ -64,6 +67,7 @@ struct DownloadSettings: Codable, Equatable, Sendable {
         pauseOnCellular = try c.decodeIfPresent(Bool.self, forKey: .pauseOnCellular) ?? d.pauseOnCellular
         requireExternalPowerForBackground = try c.decodeIfPresent(Bool.self, forKey: .requireExternalPowerForBackground) ?? d.requireExternalPowerForBackground
         keepCompletedHistoryDays = try c.decodeIfPresent(Int.self, forKey: .keepCompletedHistoryDays) ?? d.keepCompletedHistoryDays
+        defaultServerID = try c.decodeIfPresent(UUID.self, forKey: .defaultServerID)
     }
 
     init(
@@ -76,7 +80,8 @@ struct DownloadSettings: Codable, Equatable, Sendable {
         bandwidthCapKBps: Int,
         pauseOnCellular: Bool,
         requireExternalPowerForBackground: Bool,
-        keepCompletedHistoryDays: Int
+        keepCompletedHistoryDays: Int,
+        defaultServerID: UUID? = nil
     ) {
         self.maxGlobalConnections = maxGlobalConnections
         self.par2VerifyEnabled = par2VerifyEnabled
@@ -88,5 +93,6 @@ struct DownloadSettings: Codable, Equatable, Sendable {
         self.pauseOnCellular = pauseOnCellular
         self.requireExternalPowerForBackground = requireExternalPowerForBackground
         self.keepCompletedHistoryDays = keepCompletedHistoryDays
+        self.defaultServerID = defaultServerID
     }
 }
