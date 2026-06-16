@@ -18,7 +18,7 @@ struct BandwidthSettingsView: View {
     private var speedLimitMBps: Binding<Int> {
         Binding(
             get: { max(1, settingsStore.settings.bandwidthCapKBps / 1024) },
-            set: { settingsStore.settings.bandwidthCapKBps = $0 * 1024 }
+            set: { settingsStore.settings.bandwidthCapKBps = max(1, $0) * 1024 }
         )
     }
 
@@ -27,8 +27,14 @@ struct BandwidthSettingsView: View {
             Section {
                 Toggle("Limit download speed", isOn: speedLimitEnabled)
                 if settingsStore.settings.bandwidthCapKBps > 0 {
-                    Stepper(value: speedLimitMBps, in: 1...100) {
-                        LabeledContent("Speed limit") { Text(verbatim: "\(speedLimitMBps.wrappedValue) MB/s") }
+                    LabeledContent("Speed limit") {
+                        HStack(spacing: 6) {
+                            TextField("0", value: speedLimitMBps, format: .number)
+                                .keyboardType(.numberPad)
+                                .multilineTextAlignment(.trailing)
+                                .frame(maxWidth: 90)
+                            Text("MB/s").foregroundStyle(.secondary)
+                        }
                     }
                 }
             } header: {
