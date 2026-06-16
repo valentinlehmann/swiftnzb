@@ -37,37 +37,6 @@ struct ImportConfirmView: View {
                 }
 
                 Section {
-                    ForEach(job.files) { file in
-                        Button {
-                            if selected.contains(file.id) { selected.remove(file.id) } else { selected.insert(file.id) }
-                        } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: selected.contains(file.id) ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(selected.contains(file.id) ? Color.accentColor : Color.secondary)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(file.filename).lineLimit(1)
-                                    Text(verbatim: Format.bytes(file.totalBytes))
-                                        .font(.caption).foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                } header: {
-                    HStack {
-                        Text(verbatim: "Files (\(selected.count)/\(job.files.count))")
-                        Spacer()
-                        Button(allSelected ? "Deselect All" : "Select All") {
-                            selected = allSelected ? [] : Set(job.files.map(\.id))
-                        }
-                        .font(.caption)
-                        .textCase(nil)
-                    }
-                }
-
-                Section {
                     LabeledContent("Total size") { Text(verbatim: Format.bytes(selectedTotalBytes)) }
                     if let available = availableBytes {
                         LabeledContent("Available") { Text(verbatim: Format.bytes(Int(available))) }
@@ -97,6 +66,37 @@ struct ImportConfirmView: View {
                         ForEach(servers.accounts) { account in
                             Text(account.name).tag(UUID?.some(account.id))
                         }
+                    }
+                }
+
+                Section {
+                    ForEach(job.files) { file in
+                        Button {
+                            if selected.contains(file.id) { selected.remove(file.id) } else { selected.insert(file.id) }
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: selected.contains(file.id) ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(selected.contains(file.id) ? Color.accentColor : Color.secondary)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(file.filename).lineLimit(1)
+                                    Text(verbatim: Format.bytes(file.totalBytes))
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } header: {
+                    HStack {
+                        Text(verbatim: "Files (\(selected.count)/\(job.files.count))")
+                        Spacer()
+                        Button(allSelected ? "Deselect All" : "Select All") {
+                            selected = allSelected ? [] : Set(job.files.map(\.id))
+                        }
+                        .font(.caption)
+                        .textCase(nil)
                     }
                 }
             }
