@@ -55,6 +55,13 @@ struct FileLocationService {
         try? FileManager.default.removeItem(at: workingDirectory(forJobID: id))
     }
 
+    /// Free space available for the app to use, in bytes (the value iOS reports for
+    /// "important" usage — what's realistically usable, accounting for purgeable space).
+    func availableCapacityBytes() -> Int64? {
+        let values = try? documents.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
+        return values?.volumeAvailableCapacityForImportantUsage
+    }
+
     func sanitized(_ name: String) -> String {
         let illegal = CharacterSet(charactersIn: "/\\:*?\"<>|")
         let cleaned = name.components(separatedBy: illegal).joined(separator: "_")

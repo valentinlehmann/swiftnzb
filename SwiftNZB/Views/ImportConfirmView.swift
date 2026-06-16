@@ -26,6 +26,11 @@ struct ImportConfirmView: View {
         return ServerStore.shared.primaryServer?.id
     }
 
+    private let lowSpaceThreshold: Int64 = 500 * 1024 * 1024   // 500 MB headroom
+
+    private var availableBytes: Int64? { FileLocationService.shared.availableCapacityBytes() }
+    private var freeAfterBytes: Int64? { availableBytes.map { $0 - Int64(job.totalBytes) } }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -34,6 +39,30 @@ struct ImportConfirmView: View {
                     LabeledContent("Files") { Text(verbatim: "\(job.files.count)") }
                     LabeledContent("Total size") { Text(verbatim: Format.bytes(job.totalBytes)) }
                 }
+
+                if let available = availableBytes {
+                    Section {
+                        LabeledContent("Available") { Text(verbatim: Format.bytes(Int(available))) }
+                        LabeledContent("Free after download") {
+                            Text(verbatim: Format.bytes(Int(max(0, freeAfterBytes ?? 0))))
+                                .foregroundStyle((freeAfterBytes ?? 0) < lowSpaceThreshold ? Color.red : Color.secondary)
+                        }
+                        if (freeAfterBytes ?? 0) < 0 {
+                            Label("This download is larger than the free space available.",
+                                  systemImage: "exclamationmark.triangle.fill")
+                                .font(.caption).foregroundStyle(.red)
+                        } else if (freeAfterBytes ?? 0) < lowSpaceThreshold {
+                            Label("Low on space — extraction needs extra room, so leave some headroom.",
+                                  systemImage: "exclamationmark.triangle")
+                                .font(.caption).foregroundStyle(.orange)
+                        }
+                    } header: {
+                        Text("Storage")
+                    } footer: {
+                        Text("Extraction temporarily needs extra space beyond the download size.")
+                    }
+                }
+
                 Section {
                     Picker("Server", selection: $serverID) {
                         ForEach(servers.accounts) { account in
