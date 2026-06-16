@@ -42,7 +42,9 @@ final class AddServerViewModel {
             portText = String(s.port)
             useSSL = s.useSSL
             username = s.username
-            password = ServerStore.shared.password(for: s.id) ?? ""
+            // Loaded lazily via loadPassword() — a synchronous (iCloud) Keychain read in init
+            // made every server row in the list expensive to build, which felt like swipe lag.
+            password = ""
             maxConnectionsText = String(s.maxConnections)
         } else {
             editingID = nil
@@ -80,6 +82,16 @@ final class AddServerViewModel {
             username: username.trimmingCharacters(in: .whitespaces),
             maxConnections: maxConnections
         )
+    }
+
+    /// Load the existing password from the Keychain (called when the editor appears, off the
+    /// list-rendering path).
+    func loadPassword() {
+        guard let id = editingID, password.isEmpty else { return }
+        if let stored = ServerStore.shared.password(for: id) {
+            password = stored
+            testState = .idle   // setting password triggers invalidateTest; keep it idle
+        }
     }
 
     func save() {

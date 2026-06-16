@@ -78,6 +78,7 @@ struct AddServerView: View {
         }
         .navigationTitle(viewModel.isEditing ? "Edit Server" : "Add Server")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear { viewModel.loadPassword() }
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {
