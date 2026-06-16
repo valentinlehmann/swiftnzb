@@ -1,7 +1,19 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "\"Subfolder per download\" keeps each download's files together; \"Single folder\" puts everything in one place. Completed downloads appear in the Files app under \"SwiftNZB\"." : {
+
+    },
+    "0" : {
+
+    },
     "About" : {
+
+    },
+    "Accounts and the default server" : {
+
+    },
+    "Active" : {
 
     },
     "Add" : {
@@ -19,10 +31,22 @@
     "Add your Usenet server to start downloading NZB files." : {
 
     },
+    "All time" : {
+
+    },
     "Assembling" : {
 
     },
     "Authentication" : {
+
+    },
+    "Available" : {
+
+    },
+    "Background" : {
+
+    },
+    "Bandwidth" : {
 
     },
     "Cancel" : {
@@ -31,10 +55,13 @@
     "Cancelled" : {
 
     },
+    "Caps the total download speed across all connections — handy on shared or metered links. Off means download as fast as the connections allow." : {
+
+    },
     "Cleaning up" : {
 
     },
-    "Clear" : {
+    "Clear All" : {
 
     },
     "Completed" : {
@@ -43,13 +70,22 @@
     "Completed and cancelled downloads appear here." : {
 
     },
+    "Completed Downloads" : {
+
+    },
     "Connected successfully." : {
 
     },
     "Connections" : {
 
     },
+    "Date" : {
+
+    },
     "Default" : {
+
+    },
+    "Default server" : {
 
     },
     "Delete" : {
@@ -58,19 +94,37 @@
     "Delete archives after extraction" : {
 
     },
-    "Done" : {
+    "Deselect All" : {
 
     },
-    "Download" : {
+    "Device Storage" : {
+
+    },
+    "Done" : {
 
     },
     "Download Removed" : {
 
     },
+    "Downloaded" : {
+
+    },
     "Downloading" : {
 
     },
+    "Downloading while the app is closed" : {
+
+    },
+    "Edit" : {
+
+    },
     "Edit Server" : {
+
+    },
+    "Enter a port between 1 and 65535." : {
+
+    },
+    "ETA" : {
 
     },
     "Extract RAR archives" : {
@@ -79,13 +133,25 @@
     "Extracting" : {
 
     },
+    "Extraction temporarily needs extra space beyond the download size." : {
+
+    },
     "Failed" : {
 
     },
     "Files" : {
 
     },
-    "Folders" : {
+    "Files & Storage" : {
+
+    },
+    "Folder name" : {
+
+    },
+    "Free after download" : {
+
+    },
+    "Grid View" : {
 
     },
     "History" : {
@@ -94,22 +160,55 @@
     "Host" : {
 
     },
+    "How background downloading works" : {
+
+    },
+    "How many article downloads run in parallel. More connections download faster, but never exceed the limit your Usenet plan allows or the provider may refuse them." : {
+
+    },
+    "Import an NZB file to start downloading." : {
+
+    },
     "Import Failed" : {
+
+    },
+    "iOS can't keep Usenet downloads running unattended in the background — large downloads need the app open. When you leave the app, SwiftNZB finishes the current piece, saves its place, and resumes automatically next time it gets a moment to run or when you reopen it." : {
 
     },
     "Job" : {
 
     },
-    "Large downloads need the app open — iOS can't run Usenet downloads unattended in the background. The app makes opportunistic progress when possible and resumes where it left off." : {
+    "Last 7 days" : {
+
+    },
+    "Last 24h" : {
+
+    },
+    "Last 30 days" : {
+
+    },
+    "Limit download speed" : {
+
+    },
+    "Limits opportunistic background resume to when the device is plugged in, to save battery." : {
+
+    },
+    "List View" : {
+
+    },
+    "Low on space — extraction needs extra room, so leave some headroom." : {
 
     },
     "Max connections" : {
 
     },
-    "Name" : {
+    "MB/s" : {
 
     },
-    "Network" : {
+    "Most Usenet posts are split RAR archives. When enabled, SwiftNZB unpacks them into the completed folder and (optionally) removes the now-redundant archive parts to save space." : {
+
+    },
+    "Name" : {
 
     },
     "No Downloads" : {
@@ -124,10 +223,25 @@
     "OK" : {
 
     },
+    "Only when charging" : {
+
+    },
+    "Options" : {
+
+    },
     "Output layout" : {
 
     },
-    "PAR2 repair and RAR extraction are coming in a later update; these preferences are saved now." : {
+    "Output location and free space" : {
+
+    },
+    "PAR2 recovery files detect damaged or missing pieces after a download and rebuild them, so an incomplete download can still finish intact." : {
+
+    },
+    "PAR2 repair and RAR extraction" : {
+
+    },
+    "Parallel connections per download" : {
 
     },
     "Password" : {
@@ -157,10 +271,16 @@
     "Post-Processing" : {
 
     },
+    "Preselected when you add a download. Picking a different one in the add sheet updates this." : {
+
+    },
     "Queue" : {
 
     },
     "Queued" : {
+
+    },
+    "Remaining" : {
 
     },
     "Repairing" : {
@@ -178,6 +298,12 @@
     "Save" : {
 
     },
+    "Saving checks the connection first." : {
+
+    },
+    "Select All" : {
+
+    },
     "Server" : {
 
     },
@@ -187,10 +313,34 @@
     "Settings" : {
 
     },
+    "Size" : {
+
+    },
+    "Sort by" : {
+
+    },
+    "Source on GitHub" : {
+
+    },
+    "Speed" : {
+
+    },
+    "Speed limit" : {
+
+    },
+    "Speed Limit" : {
+
+    },
+    "Speed limit and cellular use" : {
+
+    },
+    "Storage" : {
+
+    },
     "SwiftNZB" : {
 
     },
-    "Tap + to import an NZB file." : {
+    "SwiftNZB — a native Usenet NZB downloader. Bring your own server and NZB files. PAR2 verification/repair is a clean-room implementation; RAR extraction uses the UnRAR library." : {
 
     },
     "Test Connection" : {
@@ -199,10 +349,22 @@
     "The output folder is empty." : {
 
     },
+    "This download is larger than the free space available." : {
+
+    },
+    "Total" : {
+
+    },
     "Total size" : {
 
     },
+    "Usage" : {
+
+    },
     "Use SSL" : {
+
+    },
+    "Used as the download's name and its folder in the Files app." : {
 
     },
     "Username" : {
@@ -221,6 +383,12 @@
 
     },
     "Welcome to SwiftNZB" : {
+
+    },
+    "When on, downloads pause while you're on a cellular connection and resume automatically on Wi-Fi." : {
+
+    },
+    "Your Usenet provider's host, port, login, and how many connections it allows." : {
 
     }
   },
