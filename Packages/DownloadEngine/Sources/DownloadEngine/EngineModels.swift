@@ -17,14 +17,18 @@ public struct ServerConfig: Sendable, Equatable {
     public var password: String?
     /// Provider's allowed simultaneous connections.
     public var maxConnections: Int
+    /// Aggregate download speed cap in bytes/sec across all connections; 0 = unlimited.
+    public var bytesPerSecondLimit: Int
 
-    public init(host: String, port: Int, useSSL: Bool, username: String?, password: String?, maxConnections: Int) {
+    public init(host: String, port: Int, useSSL: Bool, username: String?, password: String?,
+                maxConnections: Int, bytesPerSecondLimit: Int = 0) {
         self.host = host
         self.port = port
         self.useSSL = useSSL
         self.username = username
         self.password = password
         self.maxConnections = max(1, maxConnections)
+        self.bytesPerSecondLimit = max(0, bytesPerSecondLimit)
     }
 }
 

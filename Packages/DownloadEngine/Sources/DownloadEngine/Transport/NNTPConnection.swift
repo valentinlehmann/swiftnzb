@@ -21,9 +21,12 @@ actor NNTPConnection {
     private var framer = LineFramer()
     private var lineQueue: [Data] = []
     private(set) var isClosed = false
+    /// Shared across the job's connections so the cap throttles aggregate throughput.
+    private let rateLimiter: RateLimiter?
 
-    init(config: ServerConfig) {
+    init(config: ServerConfig, rateLimiter: RateLimiter? = nil) {
         self.config = config
+        self.rateLimiter = rateLimiter
     }
 
     // MARK: - Lifecycle
@@ -150,6 +153,13 @@ actor NNTPConnection {
     }
 
     private func receiveChunk() async throws -> Data {
+        let data = try await rawReceive()
+        // Throttle aggregate throughput against the shared bucket (no-op when unlimited).
+        await rateLimiter?.take(data.count)
+        return data
+    }
+
+    private func rawReceive() async throws -> Data {
         guard let connection else { throw NNTPError.notConnected }
         return try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Data, Error>) in
             connection.receive(minimumIncompleteLength: 1, maximumLength: 1 << 16) { data, _, isComplete, error in

@@ -9,6 +9,20 @@ struct SettingsView: View {
     @State private var servers = ServerStore.shared
     @Bindable private var settingsStore = SettingsStore.shared
 
+    private var speedLimitEnabled: Binding<Bool> {
+        Binding(
+            get: { settingsStore.settings.bandwidthCapKBps > 0 },
+            set: { settingsStore.settings.bandwidthCapKBps = $0 ? max(settingsStore.settings.bandwidthCapKBps, 5 * 1024) : 0 }
+        )
+    }
+
+    private var speedLimitMBps: Binding<Int> {
+        Binding(
+            get: { max(1, settingsStore.settings.bandwidthCapKBps / 1024) },
+            set: { settingsStore.settings.bandwidthCapKBps = $0 * 1024 }
+        )
+    }
+
     private var appVersion: String {
         let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
@@ -48,6 +62,19 @@ struct SettingsView: View {
                         Text(verbatim: "\(settingsStore.settings.maxGlobalConnections)")
                     }
                 }
+            }
+
+            Section {
+                Toggle("Limit download speed", isOn: speedLimitEnabled)
+                if settingsStore.settings.bandwidthCapKBps > 0 {
+                    Stepper(value: speedLimitMBps, in: 1...100) {
+                        LabeledContent("Speed limit") { Text(verbatim: "\(speedLimitMBps.wrappedValue) MB/s") }
+                    }
+                }
+            } header: {
+                Text("Bandwidth")
+            } footer: {
+                Text("Caps the total download speed across all connections — handy on shared or metered links.")
             }
 
             Section {

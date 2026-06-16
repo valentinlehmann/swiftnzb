@@ -98,6 +98,9 @@ public actor NZBDownloadEngine {
         let remaining = await scheduler.remainingCount
         let workerCount = max(1, min(server.maxConnections, remaining == 0 ? 1 : remaining))
 
+        // One shared bucket throttles aggregate throughput across all workers (nil = unlimited).
+        let rateLimiter = RateLimiter(bytesPerSecond: server.bytesPerSecondLimit)
+
         // 1 Hz progress ticker (also a crude speed gauge: bytes since last tick).
         let ticker = Task { [weak self] in
             while !Task.isCancelled {
@@ -109,7 +112,7 @@ public actor NZBDownloadEngine {
         await withTaskGroup(of: Void.self) { group in
             for _ in 0..<workerCount {
                 group.addTask { [weak self] in
-                    await self?.runWorker(server: server, scheduler: scheduler, assembler: assembler)
+                    await self?.runWorker(server: server, scheduler: scheduler, assembler: assembler, rateLimiter: rateLimiter)
                 }
             }
             await group.waitForAll()
@@ -135,7 +138,7 @@ public actor NZBDownloadEngine {
 
     // nonisolated: owns its connection as plain sequential local state and hops to the actor
     // only for shared accounting — avoids cross-isolation captures of the mutable connection.
-    private nonisolated func runWorker(server: ServerConfig, scheduler: SegmentScheduler, assembler: FileAssembler) async {
+    private nonisolated func runWorker(server: ServerConfig, scheduler: SegmentScheduler, assembler: FileAssembler, rateLimiter: RateLimiter?) async {
         var connection: NNTPConnection?
         let maxAttempts = Self.maxAttemptsPerSegment
 
@@ -147,7 +150,7 @@ public actor NZBDownloadEngine {
                 attempts += 1
 
                 if connection == nil {
-                    let candidate = NNTPConnection(config: server)
+                    let candidate = NNTPConnection(config: server, rateLimiter: rateLimiter)
                     do {
                         try await candidate.open()
                         connection = candidate

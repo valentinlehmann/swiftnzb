@@ -412,14 +412,15 @@ final class DownloadManager {
     }
 
     private func makeServerConfig(_ account: ServerAccount) -> ServerConfig {
-        let cap = SettingsStore.shared.settings.maxGlobalConnections
+        let settings = SettingsStore.shared.settings
         return ServerConfig(
             host: account.host,
             port: account.port,
             useSSL: account.useSSL,
             username: account.username.isEmpty ? nil : account.username,
             password: ServerStore.shared.password(for: account.id),
-            maxConnections: max(1, min(account.maxConnections, cap))
+            maxConnections: max(1, min(account.maxConnections, settings.maxGlobalConnections)),
+            bytesPerSecondLimit: max(0, settings.bandwidthCapKBps) * 1024
         )
     }
 
