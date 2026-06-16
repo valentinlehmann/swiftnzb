@@ -32,8 +32,12 @@ struct ImportConfirmView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Download") {
-                    TextField("Name", text: $name)
+                Section {
+                    TextField("Folder name", text: $name)
+                } header: {
+                    Text("Name")
+                } footer: {
+                    Text("Used as the download's name and its folder in the Files app.")
                 }
 
                 Section {
@@ -75,11 +79,12 @@ struct ImportConfirmView: View {
                             if selected.contains(file.id) { selected.remove(file.id) } else { selected.insert(file.id) }
                         } label: {
                             HStack(spacing: 12) {
-                                Image(systemName: selected.contains(file.id) ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(selected.contains(file.id) ? Color.accentColor : Color.secondary)
+                                CheckboxView(isChecked: selected.contains(file.id))
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(file.filename).lineLimit(1)
-                                    Text(verbatim: Format.bytes(file.totalBytes))
+                                    Text(file.filename)
+                                        .lineLimit(1)
+                                        .truncationMode(.middle)
+                                    Text(verbatim: fileSubtitle(file))
                                         .font(.caption).foregroundStyle(.secondary)
                                 }
                                 Spacer()
@@ -118,6 +123,13 @@ struct ImportConfirmView: View {
                 }
             }
         }
+    }
+
+    /// "MKV · 1.2 GB" — keeps the file type visible even when the name is truncated.
+    private func fileSubtitle(_ file: NZBFileSummary) -> String {
+        let ext = (file.filename as NSString).pathExtension
+        let size = Format.bytes(file.totalBytes)
+        return ext.isEmpty ? size : "\(ext.uppercased()) · \(size)"
     }
 
     /// Preselect the saved default server (if it still exists), else the primary account.
