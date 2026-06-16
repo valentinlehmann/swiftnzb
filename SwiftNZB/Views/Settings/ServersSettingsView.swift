@@ -22,9 +22,7 @@ struct ServersSettingsView: View {
         List {
             Section {
                 ForEach(servers.accounts) { account in
-                    NavigationLink {
-                        AddServerView(existing: account)
-                    } label: {
+                    NavigationLink(value: account) {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(account.name)
@@ -67,5 +65,8 @@ struct ServersSettingsView: View {
         }
         .navigationTitle("Servers")
         .navigationBarTitleDisplayMode(.inline)
+        // Value-based navigation builds the editor (and its Keychain read) only on tap,
+        // not eagerly for every visible row — which is what made the swipe feel laggy.
+        .navigationDestination(for: ServerAccount.self) { AddServerView(existing: $0) }
     }
 }
