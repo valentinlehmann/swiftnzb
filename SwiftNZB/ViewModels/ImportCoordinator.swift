@@ -31,13 +31,18 @@ final class ImportCoordinator {
         }
     }
 
-    func confirm(name: String, serverID: UUID?) {
-        guard var job = pendingJob else { return }
-        job.name = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? job.name : name
-        job.assignedServerID = serverID
+    func confirm(name: String, serverID: UUID?, selectedFileIDs: Set<UUID>) {
+        guard let job = pendingJob else { return }
+        let chosenName = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? job.name : name
+        let selectedFiles = job.files.filter { selectedFileIDs.contains($0.id) }
+        guard !selectedFiles.isEmpty else { return }
+
+        // Rebuild the job from only the chosen files so totals reflect the selection.
+        let newJob = DownloadJob(id: job.id, name: chosenName, files: selectedFiles,
+                                 addedAt: job.addedAt, assignedServerID: serverID)
         // Remember the pick as the new default so it's preselected next time.
         if let serverID { SettingsStore.shared.settings.defaultServerID = serverID }
-        DownloadManager.shared.enqueue(job)
+        DownloadManager.shared.enqueue(newJob)
         AppRouter.shared.section = .queue
         clear()
     }

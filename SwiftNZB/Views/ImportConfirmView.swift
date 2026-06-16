@@ -12,36 +12,64 @@ struct ImportConfirmView: View {
     @State private var servers = ServerStore.shared
     @State private var name: String
     @State private var serverID: UUID?
+    @State private var selected: Set<UUID>
 
     init(job: DownloadJob) {
         self.job = job
         _name = State(initialValue: job.name)
         _serverID = State(initialValue: Self.initialServerID())
-    }
-
-    /// Preselect the saved default server (if it still exists), else the primary account.
-    private static func initialServerID() -> UUID? {
-        let settings = SettingsStore.shared.settings
-        if let id = settings.defaultServerID, ServerStore.shared.account(id) != nil { return id }
-        return ServerStore.shared.primaryServer?.id
+        _selected = State(initialValue: Set(job.files.map(\.id)))   // all selected by default
     }
 
     private let lowSpaceThreshold: Int64 = 500 * 1024 * 1024   // 500 MB headroom
 
+    private var selectedFiles: [NZBFileSummary] { job.files.filter { selected.contains($0.id) } }
+    private var selectedTotalBytes: Int { selectedFiles.reduce(0) { $0 + $1.totalBytes } }
     private var availableBytes: Int64? { FileLocationService.shared.availableCapacityBytes() }
-    private var freeAfterBytes: Int64? { availableBytes.map { $0 - Int64(job.totalBytes) } }
+    private var freeAfterBytes: Int64? { availableBytes.map { $0 - Int64(selectedTotalBytes) } }
+    private var allSelected: Bool { selected.count == job.files.count }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section("Download") {
                     TextField("Name", text: $name)
-                    LabeledContent("Files") { Text(verbatim: "\(job.files.count)") }
-                    LabeledContent("Total size") { Text(verbatim: Format.bytes(job.totalBytes)) }
                 }
 
-                if let available = availableBytes {
-                    Section {
+                Section {
+                    ForEach(job.files) { file in
+                        Button {
+                            if selected.contains(file.id) { selected.remove(file.id) } else { selected.insert(file.id) }
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: selected.contains(file.id) ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(selected.contains(file.id) ? Color.accentColor : Color.secondary)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(file.filename).lineLimit(1)
+                                    Text(verbatim: Format.bytes(file.totalBytes))
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } header: {
+                    HStack {
+                        Text(verbatim: "Files (\(selected.count)/\(job.files.count))")
+                        Spacer()
+                        Button(allSelected ? "Deselect All" : "Select All") {
+                            selected = allSelected ? [] : Set(job.files.map(\.id))
+                        }
+                        .font(.caption)
+                        .textCase(nil)
+                    }
+                }
+
+                Section {
+                    LabeledContent("Total size") { Text(verbatim: Format.bytes(selectedTotalBytes)) }
+                    if let available = availableBytes {
                         LabeledContent("Available") { Text(verbatim: Format.bytes(Int(available))) }
                         LabeledContent("Free after download") {
                             Text(verbatim: Format.bytes(Int(max(0, freeAfterBytes ?? 0))))
@@ -56,23 +84,20 @@ struct ImportConfirmView: View {
                                   systemImage: "exclamationmark.triangle")
                                 .font(.caption).foregroundStyle(.orange)
                         }
-                    } header: {
-                        Text("Storage")
-                    } footer: {
-                        Text("Extraction temporarily needs extra space beyond the download size.")
                     }
+                } header: {
+                    Text("Storage")
+                } footer: {
+                    Text("Extraction temporarily needs extra space beyond the download size.")
                 }
 
-                Section {
+                Section("Server") {
                     Picker("Server", selection: $serverID) {
+                        Text("Default").tag(UUID?.none)
                         ForEach(servers.accounts) { account in
                             Text(account.name).tag(UUID?.some(account.id))
                         }
                     }
-                } header: {
-                    Text("Server")
-                } footer: {
-                    Text("Your choice is remembered as the default for next time.")
                 }
             }
             .navigationTitle("Add to Queue")
@@ -80,9 +105,10 @@ struct ImportConfirmView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
-                        ImportCoordinator.shared.confirm(name: name, serverID: serverID)
+                        ImportCoordinator.shared.confirm(name: name, serverID: serverID, selectedFileIDs: selected)
                         dismiss()
                     }
+                    .disabled(selected.isEmpty)
                 }
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -92,5 +118,12 @@ struct ImportConfirmView: View {
                 }
             }
         }
+    }
+
+    /// Preselect the saved default server (if it still exists), else the primary account.
+    private static func initialServerID() -> UUID? {
+        let settings = SettingsStore.shared.settings
+        if let id = settings.defaultServerID, ServerStore.shared.account(id) != nil { return id }
+        return ServerStore.shared.primaryServer?.id
     }
 }
