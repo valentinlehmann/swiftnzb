@@ -123,6 +123,11 @@ final class DownloadManager {
         save()
     }
 
+    func removeFromHistory(_ ids: Set<UUID>) {
+        jobs.removeAll { $0.status.isTerminal && ids.contains($0.id) }
+        save()
+    }
+
     func clearHistory() {
         jobs.removeAll { $0.status.isTerminal }
         save()

@@ -5,53 +5,177 @@
 
 import SwiftUI
 
+enum HistorySort: String, CaseIterable, Identifiable {
+    case date, size, name
+    var id: String { rawValue }
+    var label: LocalizedStringKey {
+        switch self {
+        case .date: return "Date"
+        case .size: return "Size"
+        case .name: return "Name"
+        }
+    }
+    var systemImage: String {
+        switch self {
+        case .date: return "calendar"
+        case .size: return "internaldrive"
+        case .name: return "textformat"
+        }
+    }
+}
+
 struct HistoryView: View {
     @State private var manager = DownloadManager.shared
+    @State private var sort: HistorySort = .date
+    @State private var grid = false
+    @State private var selection = Set<UUID>()
+    @State private var editMode: EditMode = .inactive
+
+    private var jobs: [DownloadJob] { sorted(manager.historyJobs) }
 
     var body: some View {
-        List {
+        Group {
             if manager.historyJobs.isEmpty {
-                Section {
-                    EmptyStateView(
-                        title: "No History",
-                        systemImage: "checkmark.circle",
-                        message: "Completed and cancelled downloads appear here."
-                    )
-                    .frame(maxWidth: .infinity)
-                    .listRowBackground(Color.clear)
-                }
+                EmptyStateView(title: "No History", systemImage: "checkmark.circle",
+                               message: "Completed and cancelled downloads appear here.")
+            } else if grid {
+                gridContent
             } else {
-                ForEach(manager.historyJobs) { job in
-                    NavigationLink(value: job.id) {
-                        HStack {
-                            Image(systemName: job.status.systemImage)
-                                .foregroundStyle(job.status.tint)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(job.name).lineLimit(1)
-                                Text(verbatim: "\(Format.bytes(job.totalBytes)) · \(job.status.titleText)")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
+                listContent
+            }
+        }
+        .navigationTitle("History")
+        .navigationDestination(for: UUID.self) { JobDetailView(jobID: $0) }
+        .environment(\.editMode, $editMode)
+        .toolbar { toolbar }
+        .onChange(of: editMode.isEditing) { _, editing in if !editing { selection.removeAll() } }
+    }
+
+    // MARK: - List
+
+    private var listContent: some View {
+        List(selection: $selection) {
+            ForEach(jobs) { job in
+                NavigationLink(value: job.id) { row(job) }
                     .swipeActions {
                         Button(role: .destructive) { manager.removeFromHistory(job.id) } label: {
                             Label("Delete", systemImage: "trash")
                         }
                     }
-                }
             }
         }
-        .navigationTitle("History")
-        .navigationDestination(for: UUID.self) { JobDetailView(jobID: $0) }
-        .toolbar {
-            if !manager.historyJobs.isEmpty {
-                ToolbarItem(placement: .primaryAction) {
-                    Button(role: .destructive) { manager.clearHistory() } label: {
-                        Label("Clear", systemImage: "trash")
+    }
+
+    private func row(_ job: DownloadJob) -> some View {
+        HStack {
+            Image(systemName: job.status.systemImage)
+                .foregroundStyle(job.status.tint)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(job.name).lineLimit(1)
+                Text(verbatim: "\(Format.bytes(job.totalBytes)) · \(dateText(job))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: - Grid
+
+    private var gridContent: some View {
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
+                ForEach(jobs) { job in
+                    if editMode.isEditing {
+                        gridCell(job)
+                            .overlay(alignment: .topTrailing) { selectionMark(job.id) }
+                            .onTapGesture { toggle(job.id) }
+                    } else {
+                        NavigationLink(value: job.id) { gridCell(job) }
+                            .buttonStyle(.plain)
                     }
                 }
             }
+            .padding()
+        }
+    }
+
+    private func gridCell(_ job: DownloadJob) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: job.status.systemImage).foregroundStyle(job.status.tint)
+                Spacer()
+                StatusChip(status: job.status)
+            }
+            Text(job.name).font(.subheadline.weight(.medium)).lineLimit(2)
+            Spacer(minLength: 0)
+            Text(verbatim: Format.bytes(job.totalBytes)).font(.caption.monospacedDigit())
+            Text(verbatim: dateText(job)).font(.caption2).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, minHeight: 120, alignment: .leading)
+        .padding(12)
+        .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    private func selectionMark(_ id: UUID) -> some View {
+        Image(systemName: selection.contains(id) ? "checkmark.circle.fill" : "circle")
+            .foregroundStyle(selection.contains(id) ? Color.accentColor : Color.secondary)
+            .padding(8)
+    }
+
+    // MARK: - Toolbar
+
+    @ToolbarContentBuilder
+    private var toolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            if !manager.historyJobs.isEmpty { EditButton() }
+        }
+        ToolbarItemGroup(placement: .topBarTrailing) {
+            if editMode.isEditing {
+                Button(role: .destructive) {
+                    manager.removeFromHistory(selection)
+                    selection.removeAll()
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+                .disabled(selection.isEmpty)
+            } else if !manager.historyJobs.isEmpty {
+                Menu {
+                    Picker("Sort by", selection: $sort) {
+                        ForEach(HistorySort.allCases) { option in
+                            Label(option.label, systemImage: option.systemImage).tag(option)
+                        }
+                    }
+                    Button {
+                        grid.toggle()
+                    } label: {
+                        Label(grid ? "List View" : "Grid View", systemImage: grid ? "list.bullet" : "square.grid.2x2")
+                    }
+                    Divider()
+                    Button(role: .destructive) { manager.clearHistory() } label: {
+                        Label("Clear All", systemImage: "trash")
+                    }
+                } label: {
+                    Label("Options", systemImage: "ellipsis.circle")
+                }
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func toggle(_ id: UUID) {
+        if selection.contains(id) { selection.remove(id) } else { selection.insert(id) }
+    }
+
+    private func dateText(_ job: DownloadJob) -> String {
+        (job.completedAt ?? job.addedAt).formatted(date: .abbreviated, time: .omitted)
+    }
+
+    private func sorted(_ list: [DownloadJob]) -> [DownloadJob] {
+        switch sort {
+        case .date: return list.sorted { ($0.completedAt ?? $0.addedAt) > ($1.completedAt ?? $1.addedAt) }
+        case .size: return list.sorted { $0.totalBytes > $1.totalBytes }
+        case .name: return list.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         }
     }
 }
