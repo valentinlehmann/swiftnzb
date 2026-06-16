@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// One row in the queue: name, progress, live speed/ETA, status.
+/// One row in the queue: name, progress, live speed/ETA (or post-processing step), status.
 struct JobRowView: View {
     let job: DownloadJob
     /// Live speed for the active job (0 for others).
@@ -27,19 +27,27 @@ struct JobRowView: View {
             HStack {
                 Text(verbatim: "\(Format.bytes(job.downloadedBytes)) / \(Format.bytes(job.totalBytes))")
                 Spacer()
-                if job.status == .downloading, bytesPerSecond > 0 {
-                    Text(verbatim: Format.speed(bytesPerSecond))
-                    if let eta = Format.eta(remainingBytes: max(0, job.totalBytes - job.downloadedBytes),
-                                            bytesPerSecond: bytesPerSecond) {
-                        Text(verbatim: "· \(eta)")
-                    }
-                } else {
-                    Text(verbatim: Format.percent(job.progress))
-                }
+                trailingDetail
             }
-            .font(.caption)
+            .font(.caption.monospacedDigit())
             .foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
+    }
+
+    @ViewBuilder
+    private var trailingDetail: some View {
+        if let step = job.currentStep {
+            Text(step.title)   // Verifying / Repairing / Extracting …
+        } else if job.status == .downloading, bytesPerSecond > 0 {
+            let remaining = max(0, job.totalBytes - job.downloadedBytes)
+            if let eta = Format.eta(remainingBytes: remaining, bytesPerSecond: bytesPerSecond) {
+                Text(verbatim: "\(Format.speed(bytesPerSecond)) · \(eta)")
+            } else {
+                Text(verbatim: Format.speed(bytesPerSecond))
+            }
+        } else {
+            Text(verbatim: Format.percent(job.progress))
+        }
     }
 }

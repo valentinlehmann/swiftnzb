@@ -16,6 +16,11 @@ struct JobDetailView: View {
         if let job {
             List {
                 Section { header(job) }
+                Section { statTiles(job) }
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                if let step = job.currentStep {
+                    Section { stageBanner(step) }
+                }
                 Section { controls(job) }
                     .listRowBackground(Color.clear)
                 if let error = job.errorMessage {
@@ -41,25 +46,41 @@ struct JobDetailView: View {
             HStack {
                 StatusChip(status: job.status)
                 Spacer()
-                if job.status == .downloading, manager.activeJobID == job.id {
-                    Text(verbatim: Format.speed(manager.aggregateBytesPerSecond))
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
+                Text(verbatim: Format.percent(job.progress))
+                    .font(.title3.weight(.semibold).monospacedDigit())
             }
-            ProgressView(value: job.progress) { Text(verbatim: Format.percent(job.progress)) }
+            ProgressView(value: job.progress)
                 .tint(job.status.tint)
-            HStack {
-                Text(verbatim: "\(Format.bytes(job.downloadedBytes)) / \(Format.bytes(job.totalBytes))")
-                Spacer()
-                if job.status == .downloading, manager.activeJobID == job.id, manager.activeConnections > 0 {
-                    Text(verbatim: "\(manager.activeConnections) connections")
-                }
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
+    }
+
+    @ViewBuilder
+    private func statTiles(_ job: DownloadJob) -> some View {
+        let downloading = job.status == .downloading && job.id == manager.activeJobID
+        let remaining = max(0, job.totalBytes - job.downloadedBytes)
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                StatTile("Downloaded", Format.bytes(job.downloadedBytes), systemImage: "arrow.down.circle")
+                StatTile("Total", Format.bytes(job.totalBytes), systemImage: "doc")
+            }
+            HStack(spacing: 10) {
+                StatTile("Speed", downloading ? Format.speed(manager.aggregateBytesPerSecond) : "—",
+                         systemImage: "speedometer", tint: downloading ? .accentColor : .secondary)
+                StatTile("ETA",
+                         downloading ? (Format.eta(remainingBytes: remaining, bytesPerSecond: manager.aggregateBytesPerSecond) ?? "—") : "—",
+                         systemImage: "clock")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func stageBanner(_ step: PostProcessingStep) -> some View {
+        HStack(spacing: 10) {
+            ProgressView()
+            Text(step.title).font(.callout.weight(.medium))
+            Spacer()
+        }
     }
 
     @ViewBuilder
