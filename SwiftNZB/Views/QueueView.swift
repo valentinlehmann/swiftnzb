@@ -26,11 +26,14 @@ struct QueueView: View {
         List {
             if manager.queueJobs.isEmpty {
                 Section {
-                    EmptyStateView(
-                        title: "No Downloads",
-                        systemImage: "tray",
-                        message: "Tap + to import an NZB file."
-                    )
+                    ContentUnavailableView {
+                        Label("No Downloads", systemImage: "tray.and.arrow.down")
+                    } description: {
+                        Text("Import an NZB file to start downloading.")
+                    } actions: {
+                        Button("Add NZB") { isImporting = true }
+                            .buttonStyle(.borderedProminent)
+                    }
                     .frame(maxWidth: .infinity)
                     .listRowBackground(Color.clear)
                 }
@@ -86,7 +89,17 @@ struct QueueView: View {
     private func summaryHeader(_ job: DownloadJob) -> some View {
         let remaining = max(0, job.totalBytes - job.downloadedBytes)
         let downloading = job.status == .downloading
-        VStack(spacing: 10) {
+        VStack(spacing: 14) {
+            HStack(spacing: 14) {
+                progressRing(job)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(job.name).font(.headline).lineLimit(1)
+                    Text(verbatim: manager.isWaitingForNetwork ? "Waiting for network…" : job.status.titleText)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
             HStack(spacing: 10) {
                 StatTile("Speed", downloading ? Format.speed(manager.aggregateBytesPerSecond) : "—",
                          systemImage: "speedometer", tint: downloading ? .accentColor : .secondary)
@@ -99,6 +112,21 @@ struct QueueView: View {
                 StatTile("Connections", "\(manager.activeConnections)", systemImage: "point.3.connected.trianglepath.dotted")
             }
         }
+        .padding(.vertical, 4)
+    }
+
+    private func progressRing(_ job: DownloadJob) -> some View {
+        ZStack {
+            Circle().stroke(Color.secondary.opacity(0.2), lineWidth: 6)
+            Circle()
+                .trim(from: 0, to: job.progress)
+                .stroke(job.status.tint, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .animation(.easeInOut(duration: 0.3), value: job.progress)
+            Text(verbatim: Format.percent(job.progress))
+                .font(.caption.monospacedDigit().weight(.semibold))
+        }
+        .frame(width: 58, height: 58)
     }
 
     @ViewBuilder
