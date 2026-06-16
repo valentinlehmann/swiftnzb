@@ -35,6 +35,10 @@ struct AddServerView: View {
                 Toggle("Use SSL", isOn: $viewModel.useSSL)
                 TextField("Port", text: $viewModel.portText)
                     .keyboardType(.numberPad)
+                if !viewModel.portText.isEmpty, !viewModel.hasValidPort {
+                    Text("Enter a port between 1 and 65535.")
+                        .font(.caption).foregroundStyle(.red)
+                }
             }
 
             Section("Authentication") {
@@ -71,7 +75,7 @@ struct AddServerView: View {
                 } else if case .success = viewModel.testState {
                     Text("Connected successfully.").font(.caption).foregroundStyle(.green)
                 } else if !viewModel.isEditing {
-                    Text("Test the connection before adding this server.")
+                    Text("Saving checks the connection first.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
@@ -81,11 +85,14 @@ struct AddServerView: View {
         .onAppear { viewModel.loadPassword() }
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") {
-                    viewModel.save()
-                    dismiss()
+                if viewModel.testState == .testing {
+                    ProgressView()
+                } else {
+                    Button("Save") {
+                        Task { if await viewModel.commit() { dismiss() } }
+                    }
+                    .disabled(!viewModel.canSave)
                 }
-                .disabled(!viewModel.canCommit)
             }
             if isModal {
                 ToolbarItem(placement: .cancellationAction) {

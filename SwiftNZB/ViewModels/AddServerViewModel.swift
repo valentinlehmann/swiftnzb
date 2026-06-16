@@ -62,11 +62,24 @@ final class AddServerViewModel {
     var editingServerID: UUID? { editingID }
     var port: Int { Int(portText) ?? ServerAccount.defaultPort(useSSL: useSSL) }
     var maxConnections: Int { max(1, Int(maxConnectionsText) ?? 20) }
-    var canSave: Bool { !host.trimmingCharacters(in: .whitespaces).isEmpty }
+    var hasValidPort: Bool {
+        guard let p = Int(portText) else { return false }
+        return (1...65535).contains(p)
+    }
 
-    /// A new server must pass a connection test before it can be saved; editing an existing one
-    /// does not force a re-test.
-    var canCommit: Bool { canSave && (isEditing || testState == .success) }
+    var canSave: Bool { !host.trimmingCharacters(in: .whitespaces).isEmpty && hasValidPort }
+
+    /// Save the server, testing the connection first for a new one (an existing server isn't
+    /// forced to re-test). Returns true if it was saved, so the caller can dismiss.
+    func commit() async -> Bool {
+        guard canSave else { return false }
+        if !isEditing && testState != .success {
+            await test()
+            guard testState == .success else { return false }
+        }
+        save()
+        return true
+    }
 
     private func portWasDefault(oldUseSSL: Bool) -> Bool {
         Int(portText) == ServerAccount.defaultPort(useSSL: oldUseSSL)
