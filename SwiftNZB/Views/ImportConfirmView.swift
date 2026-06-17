@@ -23,6 +23,8 @@ struct ImportConfirmView: View {
 
     private let lowSpaceThreshold: Int64 = 500 * 1024 * 1024   // 500 MB headroom
 
+    /// Files shown largest-first.
+    private var sortedFiles: [NZBFileSummary] { job.files.sorted { $0.totalBytes > $1.totalBytes } }
     private var selectedFiles: [NZBFileSummary] { job.files.filter { selected.contains($0.id) } }
     private var selectedTotalBytes: Int { selectedFiles.reduce(0) { $0 + $1.totalBytes } }
     private var availableBytes: Int64? { FileLocationService.shared.availableCapacityBytes() }
@@ -74,7 +76,7 @@ struct ImportConfirmView: View {
                 }
 
                 Section {
-                    ForEach(job.files) { file in
+                    ForEach(sortedFiles) { file in
                         Button {
                             if selected.contains(file.id) { selected.remove(file.id) } else { selected.insert(file.id) }
                         } label: {
