@@ -15,11 +15,20 @@ enum HistorySort: String, CaseIterable, Identifiable {
         case .name: return "Name"
         }
     }
-    var systemImage: String {
+    /// Direction used when this option is first picked (matches what users expect by default).
+    var defaultAscending: Bool {
         switch self {
-        case .date: return "calendar"
-        case .size: return "internaldrive"
-        case .name: return "textformat"
+        case .date: return false   // newest first
+        case .size: return false   // largest first
+        case .name: return true    // A–Z
+        }
+    }
+    /// Short description of the current direction, shown under the selected option.
+    func directionLabel(ascending: Bool) -> LocalizedStringKey {
+        switch self {
+        case .date: return ascending ? "Oldest first" : "Newest first"
+        case .size: return ascending ? "Smallest first" : "Largest first"
+        case .name: return ascending ? "A–Z" : "Z–A"
         }
     }
 }
@@ -27,7 +36,7 @@ enum HistorySort: String, CaseIterable, Identifiable {
 struct HistoryView: View {
     @State private var manager = DownloadManager.shared
     @State private var sort: HistorySort = .date
-    @State private var grid = false
+    @State private var ascending = false
     @State private var editing = false
     @State private var selection = Set<UUID>()
 
@@ -38,8 +47,6 @@ struct HistoryView: View {
             if manager.historyJobs.isEmpty {
                 EmptyStateView(title: "No History", systemImage: "checkmark.circle",
                                message: "Completed and cancelled downloads appear here.")
-            } else if grid {
-                gridContent
             } else {
                 listContent
             }
@@ -90,43 +97,6 @@ struct HistoryView: View {
         .contentShape(Rectangle())
     }
 
-    // MARK: - Grid
-
-    private var gridContent: some View {
-        ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
-                ForEach(jobs) { job in
-                    if editing {
-                        gridCell(job)
-                            .overlay(alignment: .topTrailing) { selectionMark(job.id).padding(8) }
-                            .onTapGesture { toggle(job.id) }
-                    } else {
-                        NavigationLink(value: job.id) { gridCell(job) }
-                            .buttonStyle(.plain)
-                    }
-                }
-            }
-            .padding()
-        }
-    }
-
-    private func gridCell(_ job: DownloadJob) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: job.status.systemImage).foregroundStyle(job.status.tint)
-                Spacer()
-                StatusChip(status: job.status)
-            }
-            Text(job.name).font(.subheadline.weight(.medium)).lineLimit(2)
-            Spacer(minLength: 0)
-            Text(verbatim: Format.bytes(job.totalBytes)).font(.caption.monospacedDigit())
-            Text(verbatim: dateText(job)).font(.caption2).foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, minHeight: 120, alignment: .leading)
-        .padding(12)
-        .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))
-    }
-
     private func selectionMark(_ id: UUID) -> some View {
         CheckboxView(isChecked: selection.contains(id))
     }
@@ -153,15 +123,10 @@ struct HistoryView: View {
                 .disabled(selection.isEmpty)
             } else if !manager.historyJobs.isEmpty {
                 Menu {
-                    Picker("Sort by", selection: $sort) {
+                    Section("Sort By") {
                         ForEach(HistorySort.allCases) { option in
-                            Label(option.label, systemImage: option.systemImage).tag(option)
+                            sortButton(option)
                         }
-                    }
-                    Button {
-                        withAnimation { grid.toggle() }
-                    } label: {
-                        Label(grid ? "List View" : "Grid View", systemImage: grid ? "list.bullet" : "square.grid.2x2")
                     }
                     Divider()
                     Button(role: .destructive) { manager.clearHistory() } label: {
@@ -170,6 +135,31 @@ struct HistoryView: View {
                 } label: {
                     Label("Options", systemImage: "ellipsis.circle")
                 }
+            }
+        }
+    }
+
+    /// A sort row: tapping the already-selected option flips the direction (like Files).
+    @ViewBuilder
+    private func sortButton(_ option: HistorySort) -> some View {
+        Button {
+            if sort == option {
+                ascending.toggle()
+            } else {
+                sort = option
+                ascending = option.defaultAscending
+            }
+        } label: {
+            if sort == option {
+                // The arrow doubles as the selection indicator and shows the direction.
+                Label {
+                    Text(option.label)
+                    Text(option.directionLabel(ascending: ascending))
+                } icon: {
+                    Image(systemName: ascending ? "chevron.up" : "chevron.down")
+                }
+            } else {
+                Text(option.label)
             }
         }
     }
@@ -185,10 +175,15 @@ struct HistoryView: View {
     }
 
     private func sorted(_ list: [DownloadJob]) -> [DownloadJob] {
+        let ascendingOrder: [DownloadJob]
         switch sort {
-        case .date: return list.sorted { ($0.completedAt ?? $0.addedAt) > ($1.completedAt ?? $1.addedAt) }
-        case .size: return list.sorted { $0.totalBytes > $1.totalBytes }
-        case .name: return list.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        case .date:
+            ascendingOrder = list.sorted { ($0.completedAt ?? $0.addedAt) < ($1.completedAt ?? $1.addedAt) }
+        case .size:
+            ascendingOrder = list.sorted { $0.totalBytes < $1.totalBytes }
+        case .name:
+            ascendingOrder = list.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         }
+        return ascending ? ascendingOrder : ascendingOrder.reversed()
     }
 }
