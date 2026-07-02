@@ -56,6 +56,10 @@ final class ServerStore {
     func remove(_ id: UUID) {
         accounts.removeAll { $0.id == id }
         Keychain.deletePassword(for: id.uuidString)
+        ServerUsageStore.shared.remove(serverID: id)   // don't leave orphaned usage records behind
+        if SettingsStore.shared.settings.defaultServerID == id {
+            SettingsStore.shared.settings.defaultServerID = nil
+        }
         persist()
     }
 

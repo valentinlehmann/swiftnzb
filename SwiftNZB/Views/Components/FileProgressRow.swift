@@ -22,9 +22,15 @@ struct FileProgressRow: View {
                     .foregroundStyle(.secondary)
             }
             ProgressView(value: file.progress)
-            Text(verbatim: "\(Format.bytes(file.downloadedBytes)) / \(Format.bytes(file.totalBytes)) · \(file.segments.count) segments")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 4) {
+                Text(verbatim: "\(Format.bytes(file.downloadedBytes)) / \(Format.bytes(file.totalBytes))")
+                if !file.segments.isEmpty {
+                    Text(verbatim: "·")
+                    Text("\(file.segments.count) segments")
+                }
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
         }
         .padding(.vertical, 2)
     }

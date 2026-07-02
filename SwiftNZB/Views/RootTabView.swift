@@ -2,39 +2,26 @@
 //  RootTabView.swift
 //  SwiftNZB
 //
-//  Size-class adaptive shell: TabView on iPhone, NavigationSplitView on iPad. Both route
-//  through SectionDestinationView so the screens stay interchangeable.
+//  A single adaptive TabView: on iPhone the floating tab bar, on iPad the top tab strip with a
+//  toggleable sidebar. Using one component (rather than swapping TabView ↔ NavigationSplitView on
+//  size-class changes) preserves navigation state through iPad multitasking resizes.
 //
 
 import SwiftUI
 
 struct RootTabView: View {
-    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var router = AppRouter.shared
 
     var body: some View {
-        if sizeClass == .regular {
-            NavigationSplitView {
-                List(AppSection.allCases, selection: sidebarSelection) { section in
-                    Label(section.title, systemImage: section.systemImage).tag(section)
-                }
-                .navigationTitle("SwiftNZB")
-            } detail: {
-                NavigationStack { SectionDestinationView(section: router.section) }
-            }
-        } else {
-            TabView(selection: $router.section) {
-                ForEach(AppSection.allCases) { section in
+        TabView(selection: $router.section) {
+            ForEach(AppSection.allCases) { section in
+                Tab(section.title, systemImage: section.systemImage, value: section) {
                     NavigationStack { SectionDestinationView(section: section) }
-                        .tabItem { Label(section.title, systemImage: section.systemImage) }
-                        .tag(section)
                 }
             }
         }
-    }
-
-    private var sidebarSelection: Binding<AppSection?> {
-        Binding(get: { router.section }, set: { if let value = $0 { router.section = value } })
+        .tabViewStyle(.sidebarAdaptable)
+        .tabBarMinimizeBehavior(.onScrollDown)
     }
 }
 

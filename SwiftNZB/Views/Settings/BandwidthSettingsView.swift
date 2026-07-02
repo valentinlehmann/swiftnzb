@@ -25,9 +25,9 @@ struct BandwidthSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Limit download speed", isOn: speedLimitEnabled)
+                Toggle("Limit Download Speed", isOn: speedLimitEnabled)
                 if settingsStore.settings.bandwidthCapKBps > 0 {
-                    LabeledContent("Speed limit") {
+                    LabeledContent("Speed Limit") {
                         HStack(spacing: 6) {
                             TextField("0", value: speedLimitMBps, format: .number)
                                 .keyboardType(.numberPad)
@@ -44,9 +44,9 @@ struct BandwidthSettingsView: View {
             }
 
             Section {
-                Toggle("Pause on cellular", isOn: $settingsStore.settings.pauseOnCellular)
+                Toggle("Pause on Cellular", isOn: $settingsStore.settings.pauseOnCellular)
             } footer: {
-                Text("When on, downloads pause while you're on a cellular connection and resume automatically on Wi-Fi.")
+                Text("When on, downloads pause on cellular or Low Data Mode connections and resume automatically on Wi-Fi.")
             }
         }
         .navigationTitle("Bandwidth")

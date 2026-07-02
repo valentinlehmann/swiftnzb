@@ -74,6 +74,16 @@ public final class PAR2Job {
 
     public var hasPar2: Bool { recoverySet.isValid }
 
+    /// Resolve a PAR2 file-description name to a URL that is guaranteed to stay inside the working
+    /// directory. Names come from untrusted PAR2 packets, so collapse any path structure to a
+    /// single component (defeating "../" traversal that could otherwise read or overwrite files
+    /// outside the download folder during repair).
+    private func fileURL(for name: String) -> URL {
+        var component = (name as NSString).lastPathComponent
+        if component.isEmpty || component == "." || component == ".." { component = "recovered.bin" }
+        return directory.appendingPathComponent(component)
+    }
+
     // MARK: - Verify
 
     public func verify() -> PAR2VerifyResult {
@@ -93,7 +103,7 @@ public final class PAR2Job {
         for (fi, fd) in files.enumerated() {
             let expected = blocks.filter { $0.fileIndex == fi }.count
             let checks = recoverySet.sliceChecksums[fd.fileID] ?? []
-            let url = directory.appendingPathComponent(fd.name)
+            let url = fileURL(for: fd.name)
             var good = 0
             var intact = false
 
@@ -133,6 +143,20 @@ public final class PAR2Job {
 
     public func repair() -> PAR2RepairResult {
         guard recoverySet.isValid else { return .failed(reason: "No valid PAR2 recovery data.") }
+
+        // Trim any file that is longer than its declared length before verifying: trailing bytes
+        // beyond the true size make the full-file MD5 mismatch forever, so the file would be judged
+        // damaged yet un-repairable (its slices are all present). fd.length is authoritative (from
+        // an MD5-validated packet), so truncating to it is safe and is itself a repair.
+        for fd in files where fd.length >= 0 {
+            let url = fileURL(for: fd.name)
+            guard let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size]) as? Int,
+                  size > fd.length, let handle = try? FileHandle(forWritingTo: url) else { continue }
+            try? handle.truncate(atOffset: UInt64(fd.length))
+            try? handle.synchronize()
+            try? handle.close()
+        }
+
         let (result, presence) = verifyDetailed()
         if result.isComplete { return .notNeeded }
 
@@ -190,7 +214,7 @@ public final class PAR2Job {
     private func readBlockWords(globalIndex: Int, wordsPerBlock: Int) -> [UInt16]? {
         let block = blocks[globalIndex]
         let fd = files[block.fileIndex]
-        let url = directory.appendingPathComponent(fd.name)
+        let url = fileURL(for: fd.name)
         guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
         defer { try? handle.close() }
         try? handle.seek(toOffset: UInt64(block.localSlice * recoverySet.sliceSize))
@@ -201,7 +225,7 @@ public final class PAR2Job {
     private func writeBlock(globalIndex: Int, words: [UInt16]) -> Bool {
         let block = blocks[globalIndex]
         let fd = files[block.fileIndex]
-        let url = directory.appendingPathComponent(fd.name)
+        let url = fileURL(for: fd.name)
 
         if !FileManager.default.fileExists(atPath: url.path) {
             try? FileManager.default.createDirectory(

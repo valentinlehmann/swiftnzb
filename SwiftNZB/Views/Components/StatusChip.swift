@@ -13,9 +13,11 @@ struct StatusChip: View {
         Label(status.title, systemImage: status.systemImage)
             .font(.caption2.weight(.semibold))
             .labelStyle(.titleAndIcon)
+            .contentTransition(.symbolEffect(.replace))
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(status.tint.opacity(0.15), in: Capsule())
             .foregroundStyle(status.tint)
+            .animation(.default, value: status)
     }
 }

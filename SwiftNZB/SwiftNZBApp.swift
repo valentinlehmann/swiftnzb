@@ -24,6 +24,8 @@ struct SwiftNZBApp: App {
                 BackgroundTaskService.shared.beginWindDown()
                 BackgroundTaskService.shared.scheduleProcessing(
                     requireExternalPower: SettingsStore.shared.settings.requireExternalPowerForBackground)
+                // Persist resume state now, not only if the wind-down window expires.
+                Task { await DownloadManager.shared.flushForSuspension() }
             case .active:
                 BackgroundTaskService.shared.endWindDown()
             default:

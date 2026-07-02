@@ -20,6 +20,7 @@ struct RootView: View {
         .sheet(isPresented: $importer.isPresentingConfirm) {
             if let job = importer.pendingJob {
                 ImportConfirmView(job: job)
+                    .presentationSizing(.form)
             }
         }
         .alert("Import Failed", isPresented: $importer.isPresentingError) {
@@ -42,12 +43,13 @@ private struct OnboardingView: View {
                 Text("Add your Usenet server to start downloading NZB files.")
             } actions: {
                 Button("Add Server") { showingAddServer = true }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.glassProminent)
             }
             .navigationTitle("SwiftNZB")
         }
         .sheet(isPresented: $showingAddServer) {
             NavigationStack { AddServerView(isModal: true) }
+                .presentationSizing(.form)
         }
     }
 }

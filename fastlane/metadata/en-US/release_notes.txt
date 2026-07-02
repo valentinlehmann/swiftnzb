@@ -1,0 +1,1 @@
+First release: parallel downloads from your Usenet provider, automatic PAR2 verification and repair, RAR extraction, Live Activity progress, and Files app integration.

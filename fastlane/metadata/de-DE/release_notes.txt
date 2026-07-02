@@ -1,0 +1,1 @@
+Erste Version: parallele Downloads von deinem Usenet-Provider, automatische PAR2-Prüfung und -Reparatur, RAR-Entpacken, Live-Aktivität und Integration in die Dateien-App.

@@ -33,7 +33,9 @@ struct FileBrowserView: View {
                 ForEach(contents, id: \.self) { url in
                     ShareLink(item: url) {
                         HStack {
-                            Image(systemName: "doc")
+                            Image(systemName: Self.icon(for: url))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 28)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(url.lastPathComponent).lineLimit(1)
                                 Text(verbatim: Format.bytes(fileSize(url)))
@@ -56,5 +58,20 @@ struct FileBrowserView: View {
 
     private func fileSize(_ url: URL) -> Int {
         (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+    }
+
+    /// A recognizable SF Symbol for the file's type, so the list scans at a glance.
+    private static func icon(for url: URL) -> String {
+        switch url.pathExtension.lowercased() {
+        case "mkv", "mp4", "avi", "mov", "m4v", "wmv", "flv", "webm": return "film"
+        case "mp3", "flac", "m4a", "aac", "wav", "ogg", "opus": return "music.note"
+        case "jpg", "jpeg", "png", "gif", "heic", "webp", "bmp", "tiff": return "photo"
+        case "rar", "zip", "7z", "tar", "gz": return "doc.zipper"
+        case "par2": return "checkmark.shield"
+        case "iso", "img", "dmg": return "opticaldisc"
+        case "pdf": return "doc.richtext"
+        case "txt", "nfo", "srt", "sub": return "doc.text"
+        default: return "doc"
+        }
     }
 }

@@ -29,7 +29,12 @@ public struct Checkpoint: Codable, Sendable {
 actor CheckpointStore {
     private let url: URL
     private var pendingSaveTask: Task<Void, Never>?
+    private var lastWrite: ContinuousClock.Instant?
     private static let debounce: Duration = .seconds(2)
+    /// Even under a steady stream of completions (which keep resetting the debounce), never let
+    /// the on-disk checkpoint fall more than this far behind — otherwise a mid-download kill
+    /// re-downloads everything since the last quiet period.
+    private static let maxStaleness: Duration = .seconds(10)
 
     init(directory: URL, jobID: String) {
         self.url = directory.appendingPathComponent("checkpoint.json")
@@ -40,19 +45,33 @@ actor CheckpointStore {
         return try? JSONDecoder().decode(Checkpoint.self, from: data)
     }
 
-    /// Debounced save — repeated calls coalesce into one write after a short quiet period.
+    /// Coalesced save: writes after a short quiet period, but forces a write if the checkpoint has
+    /// gone stale (so continuous progress still persists roughly every `maxStaleness`).
     func scheduleSave(_ checkpoint: Checkpoint) {
+        let now = ContinuousClock().now
+        if let last = lastWrite, now - last >= Self.maxStaleness {
+            pendingSaveTask?.cancel()
+            pendingSaveTask = nil
+            writeNow(checkpoint)
+            return
+        }
         pendingSaveTask?.cancel()
-        pendingSaveTask = Task { [url] in
+        pendingSaveTask = Task { [weak self] in
             try? await Task.sleep(for: Self.debounce)
             guard !Task.isCancelled else { return }
-            Self.write(checkpoint, to: url)
+            await self?.writeNow(checkpoint)
         }
     }
 
-    /// Immediate, synchronous flush (call on pause / wind-down before suspension).
+    /// Immediate flush (call on pause / wind-down / backgrounding before suspension).
     func flush(_ checkpoint: Checkpoint) {
         pendingSaveTask?.cancel()
+        pendingSaveTask = nil
+        writeNow(checkpoint)
+    }
+
+    private func writeNow(_ checkpoint: Checkpoint) {
+        lastWrite = ContinuousClock().now
         Self.write(checkpoint, to: url)
     }
 

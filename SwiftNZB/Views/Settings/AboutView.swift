@@ -21,8 +21,13 @@ struct AboutView: View {
                 }
             }
             Section {
-                Text("SwiftNZB — a native Usenet NZB downloader. Bring your own server and NZB files. PAR2 verification/repair is a clean-room implementation; RAR extraction uses the UnRAR library.")
+                Text("SwiftNZB is a native client for the Usenet (NNTP) protocol. Bring your own Usenet provider account and NZB files. PAR2 verification and repair is a clean-room implementation; RAR extraction uses the UnRAR library.")
                     .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            Section {
+                Text("SwiftNZB contains no content and no search. You are responsible for the content you access, and should only download material you have the right to.")
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
             }
         }

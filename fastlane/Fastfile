@@ -16,6 +16,35 @@ platform :ios do
       skip_waiting_for_build_processing: true
     )
   end
+
+  # Build + upload a release to the App Store: binary AND the listing metadata under
+  # fastlane/metadata (name/subtitle/description/keywords/notes, en-US + de-DE).
+  #
+  # This deliberately does NOT auto-submit for review. A reviewer can't test the app without a
+  # demo Usenet account and a demo .nzb file, and the demo NZB has to be attached in the App Store
+  # Connect UI (fastlane can't). So this uploads everything it can, then you finish in App Store
+  # Connect: add screenshots (if not shipping them from ./fastlane/screenshots), attach the demo
+  # NZB, and press Submit. Full checklist: docs/AppStoreReview.md.
+  desc "Build and upload a release (binary + metadata) to the App Store. Does not auto-submit."
+  lane :release do
+    setup_ci if ENV['CI']
+    api_key = load_api_key
+    match(type: 'appstore')
+    update_build_number
+    build_app(scheme: "SwiftNZB")
+    upload_to_app_store(
+      api_key: api_key,
+      metadata_path: "./fastlane/metadata",
+      # No screenshots are committed yet. Add them under ./fastlane/screenshots and drop this flag
+      # to have fastlane upload them, or upload them manually in App Store Connect.
+      skip_screenshots: true,
+      # Upload only — see the note above. Submit in App Store Connect after attaching the demo NZB.
+      submit_for_review: false,
+      precheck_include_in_app_purchases: false,
+      # Skip the interactive HTML metadata-preview confirmation so the lane runs unattended.
+      force: true
+    )
+  end
 end
 
 desc "Register the app + widget App IDs on the Apple Developer portal (one-time, before match)"

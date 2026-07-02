@@ -4,7 +4,13 @@
     "\"Subfolder per download\" keeps each download's files together; \"Single folder\" puts everything in one place. Completed downloads appear in the Files app under \"SwiftNZB\"." : {
 
     },
+    "%lld segments" : {
+
+    },
     "0" : {
+
+    },
+    "A–Z" : {
 
     },
     "About" : {
@@ -52,6 +58,12 @@
     "Cancel" : {
 
     },
+    "Cancel Download" : {
+
+    },
+    "Cancel this download?" : {
+
+    },
     "Cancelled" : {
 
     },
@@ -62,6 +74,9 @@
 
     },
     "Clear All" : {
+
+    },
+    "Clear all history?" : {
 
     },
     "Completed" : {
@@ -85,13 +100,13 @@
     "Default" : {
 
     },
-    "Default server" : {
+    "Default Server" : {
 
     },
     "Delete" : {
 
     },
-    "Delete archives after extraction" : {
+    "Delete Archives After Extraction" : {
 
     },
     "Deselect All" : {
@@ -127,7 +142,7 @@
     "ETA" : {
 
     },
-    "Extract RAR archives" : {
+    "Extract RAR Archives" : {
 
     },
     "Extracting" : {
@@ -149,9 +164,6 @@
 
     },
     "Free after download" : {
-
-    },
-    "Grid View" : {
 
     },
     "History" : {
@@ -178,6 +190,15 @@
     "Job" : {
 
     },
+    "Keep Downloading" : {
+
+    },
+    "Large files are often split into multi-part RAR archives for transfer. When enabled, SwiftNZB unpacks them into the completed folder and (optionally) removes the now-redundant archive parts to save space." : {
+
+    },
+    "Largest first" : {
+
+    },
     "Last 7 days" : {
 
     },
@@ -187,28 +208,25 @@
     "Last 30 days" : {
 
     },
-    "Limit download speed" : {
+    "Limit Download Speed" : {
 
     },
     "Limits opportunistic background resume to when the device is plugged in, to save battery." : {
 
     },
-    "List View" : {
-
-    },
     "Low on space — extraction needs extra room, so leave some headroom." : {
 
     },
-    "Max connections" : {
+    "Max Connections" : {
 
     },
     "MB/s" : {
 
     },
-    "Most Usenet posts are split RAR archives. When enabled, SwiftNZB unpacks them into the completed folder and (optionally) removes the now-redundant archive parts to save space." : {
+    "Name" : {
 
     },
-    "Name" : {
+    "Newest first" : {
 
     },
     "No Downloads" : {
@@ -223,13 +241,16 @@
     "OK" : {
 
     },
-    "Only when charging" : {
+    "Oldest first" : {
+
+    },
+    "Only When Charging" : {
 
     },
     "Options" : {
 
     },
-    "Output layout" : {
+    "Output Layout" : {
 
     },
     "Output location and free space" : {
@@ -256,7 +277,7 @@
     "Pause Download" : {
 
     },
-    "Pause on cellular" : {
+    "Pause on Cellular" : {
 
     },
     "Paused" : {
@@ -272,6 +293,9 @@
 
     },
     "Preselected when you add a download. Picking a different one in the add sheet updates this." : {
+
+    },
+    "Progress" : {
 
     },
     "Queue" : {
@@ -313,19 +337,25 @@
     "Settings" : {
 
     },
+    "Show Files" : {
+
+    },
+    "Single Folder" : {
+
+    },
     "Size" : {
 
     },
-    "Sort by" : {
+    "Smallest first" : {
+
+    },
+    "Sort By" : {
 
     },
     "Source on GitHub" : {
 
     },
     "Speed" : {
-
-    },
-    "Speed limit" : {
 
     },
     "Speed Limit" : {
@@ -337,10 +367,16 @@
     "Storage" : {
 
     },
+    "Subfolder per Download" : {
+
+    },
     "SwiftNZB" : {
 
     },
-    "SwiftNZB — a native Usenet NZB downloader. Bring your own server and NZB files. PAR2 verification/repair is a clean-room implementation; RAR extraction uses the UnRAR library." : {
+    "SwiftNZB contains no content and no search. You are responsible for the content you access, and should only download material you have the right to." : {
+
+    },
+    "SwiftNZB is a native client for the Usenet (NNTP) protocol. Bring your own Usenet provider account and NZB files. PAR2 verification and repair is a clean-room implementation; RAR extraction uses the UnRAR library." : {
 
     },
     "Test Connection" : {
@@ -349,7 +385,13 @@
     "The output folder is empty." : {
 
     },
+    "The partially downloaded files will be deleted." : {
+
+    },
     "This download is larger than the free space available." : {
+
+    },
+    "This removes every completed and cancelled download from the list. Your downloaded files in the Files app are not affected." : {
 
     },
     "Total" : {
@@ -370,7 +412,7 @@
     "Username" : {
 
     },
-    "Verify & repair with PAR2" : {
+    "Verify & Repair with PAR2" : {
 
     },
     "Verifying" : {
@@ -385,10 +427,13 @@
     "Welcome to SwiftNZB" : {
 
     },
-    "When on, downloads pause while you're on a cellular connection and resume automatically on Wi-Fi." : {
+    "When on, downloads pause on cellular or Low Data Mode connections and resume automatically on Wi-Fi." : {
 
     },
     "Your Usenet provider's host, port, login, and how many connections it allows." : {
+
+    },
+    "Z–A" : {
 
     }
   },

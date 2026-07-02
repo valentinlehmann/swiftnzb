@@ -55,7 +55,9 @@ public enum YEncDecoder {
         var pcrc: UInt32?
         var fileCRC: UInt32?
 
-        var out = Data()
+        // Decode into a plain byte array (per-byte Data.append pays a Foundation call on every
+        // downloaded byte); wrap it in Data once at the end.
+        var out = [UInt8]()
         out.reserveCapacity(bodyLines.reduce(0) { $0 + $1.count })
         var escapePending = false
 
@@ -93,16 +95,21 @@ public enum YEncDecoder {
 
         guard sawBegin else { throw YEncError.missingBeginHeader }
 
+        let outData = Data(out)
         var crc = CRC32()
-        crc.update(out)
+        crc.update(outData)
         let computed = crc.checksum
-        let declared = pcrc ?? fileCRC
+        // The whole-file `crc32` only describes THIS part when the article is single-part. For a
+        // multipart segment we can only verify against the part-level `pcrc32`; if the poster
+        // omitted it, accept the part (checking it against the whole-file CRC would falsely fail
+        // every segment and mark it missing).
+        let declared = pcrc ?? (header.isMultipart ? nil : fileCRC)
         let matches = declared.map { $0 == computed }
 
         let fileOffset = (header.partBegin.map { $0 - 1 }) ?? 0
 
         return YEncDecodedSegment(
-            data: out,
+            data: outData,
             header: header,
             declaredPartSize: declaredPartSize,
             declaredCRC: declared,

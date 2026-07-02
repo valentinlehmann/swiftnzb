@@ -12,7 +12,7 @@ struct ConnectionsSettingsView: View {
         Form {
             Section {
                 Stepper(value: $settingsStore.settings.maxGlobalConnections, in: 1...100) {
-                    LabeledContent("Max connections") {
+                    LabeledContent("Max Connections") {
                         Text(verbatim: "\(settingsStore.settings.maxGlobalConnections)")
                     }
                 }

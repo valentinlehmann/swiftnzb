@@ -39,6 +39,7 @@ struct HistoryView: View {
     @State private var ascending = false
     @State private var editing = false
     @State private var selection = Set<UUID>()
+    @State private var confirmingClearAll = false
 
     private var jobs: [DownloadJob] { sorted(manager.historyJobs) }
 
@@ -55,6 +56,12 @@ struct HistoryView: View {
         .navigationDestination(for: UUID.self) { JobDetailView(jobID: $0) }
         .toolbar { toolbar }
         .onChange(of: editing) { _, isEditing in if !isEditing { selection.removeAll() } }
+        .confirmationDialog("Clear all history?", isPresented: $confirmingClearAll, titleVisibility: .visible) {
+            Button("Clear All", role: .destructive) { manager.clearHistory() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes every completed and cancelled download from the list. Your downloaded files in the Files app are not affected.")
+        }
     }
 
     // MARK: - List
@@ -70,9 +77,10 @@ struct HistoryView: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    .accessibilityAddTraits(selection.contains(job.id) ? [.isButton, .isSelected] : .isButton)
                 } else {
                     NavigationLink(value: job.id) { row(job) }
-                        .swipeActions {
+                        .swipeActions(allowsFullSwipe: false) {
                             Button(role: .destructive) { manager.removeFromHistory(job.id) } label: {
                                 Label("Delete", systemImage: "trash")
                             }
@@ -86,6 +94,7 @@ struct HistoryView: View {
         HStack {
             Image(systemName: job.status.systemImage)
                 .foregroundStyle(job.status.tint)
+                .frame(width: 28)   // keep the title column aligned across glyph widths
             VStack(alignment: .leading, spacing: 2) {
                 Text(job.name).lineLimit(1)
                 Text(verbatim: "\(Format.bytes(job.totalBytes)) · \(dateText(job))")
@@ -129,7 +138,7 @@ struct HistoryView: View {
                         }
                     }
                     Divider()
-                    Button(role: .destructive) { manager.clearHistory() } label: {
+                    Button(role: .destructive) { confirmingClearAll = true } label: {
                         Label("Clear All", systemImage: "trash")
                     }
                 } label: {

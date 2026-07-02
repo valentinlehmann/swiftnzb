@@ -47,6 +47,21 @@ private enum TestYEnc {
         lines.append(Data("=yend size=\(data.count) part=\(part) pcrc32=\(crc)".utf8))
         return lines
     }
+
+    /// A multipart part whose =yend carries only the whole-file crc32 (no per-part pcrc32) — a
+    /// common real-world posting that must not be treated as a per-part checksum.
+    static func multiPartWholeFileCRCOnly(_ data: Data, name: String, part: Int, total: Int,
+                                          begin: Int, fileSize: Int, wholeFileCRC: UInt32,
+                                          width: Int = 128) -> [Data] {
+        let end = begin + data.count - 1
+        var lines = [
+            Data("=ybegin part=\(part) total=\(total) line=\(width) size=\(fileSize) name=\(name)".utf8),
+            Data("=ypart begin=\(begin) end=\(end)".utf8),
+        ]
+        lines += dataLines(data, width: width)
+        lines.append(Data("=yend size=\(data.count) part=\(part) crc32=\(String(format: "%08x", wholeFileCRC))".utf8))
+        return lines
+    }
 }
 
 struct YEncTests {
@@ -73,7 +88,7 @@ struct YEncTests {
     @Test func multiPartOffsetAndCRC() throws {
         let data = Data((0..<1000).map { UInt8(($0 * 13) & 0xFF) })
         let begin = 1001 // second 1000-byte part → 0-based offset 1000
-        let lines = TestYEnc.multiPart(data, name: "movie.r00", part: 2, total: 5,
+        let lines = TestYEnc.multiPart(data, name: "archive.r00", part: 2, total: 5,
                                        begin: begin, fileSize: 5000, width: 128)
         let seg = try YEncDecoder.decode(bodyLines: lines)
 
@@ -94,6 +109,19 @@ struct YEncTests {
 
         let seg = try YEncDecoder.decode(bodyLines: lines)
         #expect(seg.crcMatches == false)
+    }
+
+    /// A multipart segment that declares only the whole-file crc32 (no pcrc32) must be accepted
+    /// (crcMatches == nil), not falsely failed against a checksum that describes the whole file.
+    @Test func multiPartWithoutPerPartCRCIsAccepted() throws {
+        let data = Data((0..<1000).map { UInt8(($0 * 7) & 0xFF) })
+        // Whole-file CRC deliberately unrelated to this part's bytes.
+        let lines = TestYEnc.multiPartWholeFileCRCOnly(
+            data, name: "part2.bin", part: 2, total: 5, begin: 1001, fileSize: 5000,
+            wholeFileCRC: 0xDEADBEEF)
+        let seg = try YEncDecoder.decode(bodyLines: lines)
+        #expect(seg.data == data)
+        #expect(seg.crcMatches == nil)   // not false — we can't per-part-verify, so we accept
     }
 
     @Test func missingBeginThrows() {

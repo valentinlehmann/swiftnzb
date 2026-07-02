@@ -1,0 +1,26 @@
+name: release-ios-app
+# Manually triggered from the Actions tab (Run workflow). Builds and uploads the binary + App
+# Store listing metadata via `fastlane release`. It does NOT auto-submit for review — finish in
+# App Store Connect (attach the demo NZB, add screenshots, press Submit). See docs/AppStoreReview.md.
+on:
+  workflow_dispatch:
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - run: brew install xcodegen
+      - run: xcodegen generate
+      - run: bundle install
+      - run: bundle exec fastlane release
+        env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_PAT }}
+          APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+          APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
+          FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 10
+          FASTLANE_XCODEBUILD_SETTINGS_RETRIES: 5

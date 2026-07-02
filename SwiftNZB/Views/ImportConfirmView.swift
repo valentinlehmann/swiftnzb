@@ -94,10 +94,11 @@ struct ImportConfirmView: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .accessibilityAddTraits(selected.contains(file.id) ? [.isButton, .isSelected] : .isButton)
                     }
                 } header: {
                     HStack {
-                        Text(verbatim: "Files (\(selected.count)/\(job.files.count))")
+                        Text("Files") + Text(verbatim: " (\(selected.count)/\(job.files.count))")
                         Spacer()
                         Button(allSelected ? "Deselect All" : "Select All") {
                             selected = allSelected ? [] : Set(job.files.map(\.id))

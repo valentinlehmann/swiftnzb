@@ -38,9 +38,11 @@ struct StatTile: View {
                 .foregroundStyle(tint)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+                .contentTransition(.numericText())
+                .animation(.default, value: value)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
-        .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+        .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 12))
     }
 }

@@ -24,6 +24,7 @@ struct ArchiveExtractor {
         guard !archives.isEmpty else { return .noArchives }
 
         try? FileManager.default.createDirectory(at: destinationDirectory, withIntermediateDirectories: true)
+        let destRoot = destinationDirectory.standardizedFileURL
         var extractedCount = 0
 
         for archiveURL in archives {
@@ -32,16 +33,33 @@ struct ArchiveExtractor {
                 let entries = try archive.entries()
                 for entry in entries where !entry.directory {
                     if entry.encrypted, password == nil { return .passwordRequired }
-                    let outURL = destinationDirectory.appendingPathComponent(entry.fileName)
+
+                    // Zip-slip guard: an archive entry name like "../../evil" would otherwise write
+                    // outside the destination. Resolve the target and require it to stay inside.
+                    guard let outURL = safeDestination(for: entry.fileName, under: destRoot) else {
+                        return .failed("Archive contains an unsafe path: \(entry.fileName)")
+                    }
                     try FileManager.default.createDirectory(
                         at: outURL.deletingLastPathComponent(), withIntermediateDirectories: true)
                     FileManager.default.createFile(atPath: outURL.path, contents: nil)
                     guard let handle = try? FileHandle(forWritingTo: outURL) else {
                         return .failed("Could not write \(entry.fileName)")
                     }
-                    defer { try? handle.close() }
-                    try archive.extract(entry) { data, _ in
-                        try? handle.write(contentsOf: data)
+                    // Surface a write failure (e.g. disk full) instead of silently producing a
+                    // truncated file that the caller then treats as a successful extraction.
+                    var writeError: Error?
+                    do {
+                        try archive.extract(entry) { data, _ in
+                            guard writeError == nil else { return }
+                            do { try handle.write(contentsOf: data) } catch { writeError = error }
+                        }
+                    } catch {
+                        try? handle.close()
+                        return .failed("Extraction failed: \(error.localizedDescription)")
+                    }
+                    try? handle.close()
+                    if let writeError {
+                        return .failed("Could not write \(entry.fileName): \(writeError.localizedDescription)")
                     }
                     extractedCount += 1
                 }
@@ -50,6 +68,28 @@ struct ArchiveExtractor {
             }
         }
         return .extracted(fileCount: extractedCount)
+    }
+
+    /// Resolve an archive entry name to a URL guaranteed to live inside `root`, or nil if the entry
+    /// tries to escape (absolute path, `..` traversal, etc.).
+    static func safeDestination(for entryName: String, under root: URL) -> URL? {
+        // Drop any leading slashes / drive-style prefix; take only the relative path components,
+        // skipping "" and "." and rejecting ".." outright.
+        let components = entryName.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
+        var safe: [String] = []
+        for component in components {
+            if component == "." { continue }
+            if component == ".." { return nil }
+            safe.append(component)
+        }
+        guard !safe.isEmpty else { return nil }
+        var url = root
+        for component in safe { url.appendPathComponent(component) }
+        // Belt-and-suspenders: the resolved path must still be within root.
+        let resolved = url.standardizedFileURL.path
+        let rootPath = root.path.hasSuffix("/") ? root.path : root.path + "/"
+        guard resolved == root.path || resolved.hasPrefix(rootPath) else { return nil }
+        return url
     }
 
     /// The first volume of each RAR set in a directory (skips `.partNN.rar` continuation volumes).

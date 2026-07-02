@@ -1,0 +1,1 @@
+The native Usenet client for iPhone and iPad: parallel connections, PAR2 repair, RAR extraction, and a Live Activity that keeps you posted.

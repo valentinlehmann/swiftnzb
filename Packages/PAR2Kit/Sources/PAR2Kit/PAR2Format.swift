@@ -45,7 +45,9 @@ enum PAR2Parser {
     private static let typeRecvSlice: [UInt8] = Array("PAR 2.0\0RecvSlic".utf8)
     private static let typeCreator: [UInt8] = Array("PAR 2.0\0Creator\0".utf8)
 
-    /// Parse all valid packets in a `.par2` file's bytes (MD5-validated).
+    /// Parse all valid packets in a `.par2` file's bytes (MD5-validated). Defends against hostile
+    /// input: the packet length is validated as UInt64 (so an absurd value can't trap the
+    /// `Int(_:)` conversion or overflow `i + length`) before anything is read.
     static func parse(_ data: Data) -> [PAR2Packet] {
         let bytes = [UInt8](data)
         var packets: [PAR2Packet] = []
@@ -56,8 +58,10 @@ enum PAR2Parser {
             // Find the next magic.
             guard matches(bytes, at: i, magic) else { i += 1; continue }
 
-            let length = Int(bytes.u64LE(i + 8))
-            guard length >= 64, length % 4 == 0, i + length <= n else { i += 1; continue }
+            let len64 = bytes.u64LE(i + 8)
+            // Compare in UInt64 so nothing traps/overflows; only convert once it's known in-range.
+            guard len64 >= 64, len64 % 4 == 0, len64 <= UInt64(n - i) else { i += 1; continue }
+            let length = Int(len64)
 
             let hash = Array(bytes[(i + 16)..<(i + 32)])
             let signed = Array(bytes[(i + 32)..<(i + length)])   // recoverySetID + type + body
@@ -130,39 +134,58 @@ struct PAR2RecoverySet {
         var set = PAR2RecoverySet()
         var seenExponents = Set<Int>()
 
+        // Collect every packet across all files first so we can lock onto a single recovery set.
+        var allPackets: [PAR2Packet] = []
         for url in urls {
             guard let data = try? Data(contentsOf: url) else { continue }
-            for packet in PAR2Parser.parse(data) {
-                switch packet.type {
-                case .main where set.sliceSize == 0:
-                    parseMain(packet.body, into: &set)
-                case .main:
-                    break
-                case .fileDescription:
-                    if let fd = parseFileDescription(packet.body) {
-                        set.fileDescriptions[fd.fileID] = fd
-                    }
-                case .inputSliceChecksum:
-                    parseIFSC(packet.body, into: &set)
-                case .recoverySlice:
-                    if packet.body.count > 4 {
-                        let exponent = Int(packet.body.u32LE(0))
-                        if seenExponents.insert(exponent).inserted {
-                            set.recoverySlices.append(
-                                PAR2RecoverySlice(exponent: exponent, data: Array(packet.body[4...])))
-                        }
-                    }
-                case .creator, .unknown:
-                    break
+            allPackets.append(contentsOf: PAR2Parser.parse(data))
+        }
+
+        // A directory can legitimately hold more than one PAR2 set; merging packets across sets
+        // corrupts the input-block ordering. Lock onto the first Main packet's recovery-set ID and
+        // ignore everything that doesn't belong to it.
+        guard let mainID = allPackets.first(where: { $0.type == .main })?.recoverySetID else {
+            return set
+        }
+
+        for packet in allPackets where packet.recoverySetID == mainID {
+            switch packet.type {
+            case .main where set.sliceSize == 0:
+                parseMain(packet.body, into: &set)
+            case .main:
+                break
+            case .fileDescription:
+                if let fd = parseFileDescription(packet.body) {
+                    set.fileDescriptions[fd.fileID] = fd
                 }
+            case .inputSliceChecksum:
+                parseIFSC(packet.body, into: &set)
+            case .recoverySlice:
+                if packet.body.count > 4 {
+                    let exponent = Int(packet.body.u32LE(0))
+                    if seenExponents.insert(exponent).inserted {
+                        set.recoverySlices.append(
+                            PAR2RecoverySlice(exponent: exponent, data: Array(packet.body[4...])))
+                    }
+                }
+            case .creator, .unknown:
+                break
             }
         }
         return set
     }
 
+    /// Upper bound on a PAR2 slice size (guards huge per-slice allocations from hostile input).
+    /// Real sets use tens of KB to a few MB; 64 MB is far beyond any legitimate value.
+    private static let maxSliceSize = 64 * 1024 * 1024
+
     private static func parseMain(_ body: [UInt8], into set: inout PAR2RecoverySet) {
         guard body.count >= 12 else { return }
-        set.sliceSize = Int(body.u64LE(0))
+        let rawSlice = body.u64LE(0)
+        // Slice size must be a positive multiple of 4 and sane; otherwise leave the set invalid
+        // (sliceSize == 0) rather than trapping the Int conversion or allocating gigabytes later.
+        guard rawSlice > 0, rawSlice % 4 == 0, rawSlice <= UInt64(maxSliceSize) else { return }
+        set.sliceSize = Int(rawSlice)
         let count = Int(body.u32LE(8))
         var offset = 12
         for _ in 0..<count {
@@ -177,7 +200,7 @@ struct PAR2RecoverySet {
         let fileID = Array(body[0..<16])
         let fullMD5 = Array(body[16..<32])
         let md5_16k = Array(body[32..<48])
-        let length = Int(body.u64LE(48))
+        let length = Int(clamping: body.u64LE(48))   // clamp so an absurd length can't trap
         let nameBytes = Array(body[56...]).prefix { $0 != 0 }
         let name = String(decoding: nameBytes, as: UTF8.self)
         return PAR2FileDescription(fileID: fileID, fullMD5: fullMD5, md5_16k: md5_16k, length: length, name: name)

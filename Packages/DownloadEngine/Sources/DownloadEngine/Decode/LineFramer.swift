@@ -18,24 +18,40 @@ struct LineFramer {
         return drainCompleteLines()
     }
 
-    /// Any bytes buffered that haven't been terminated by a newline yet.
+    /// Bytes buffered that haven't been terminated by a newline yet.
     var pending: Data { buffer }
+    var pendingCount: Int { buffer.count }
 
+    /// Scan the buffer once, emitting each complete line, then drop the whole consumed prefix in a
+    /// single copy. (Compacting after every line is O(n²) over a large article body.)
     private mutating func drainCompleteLines() -> [Data] {
-        var lines: [Data] = []
         let lf: UInt8 = 0x0A
         let cr: UInt8 = 0x0D
+        var lines: [Data] = []
+        var consumedUpTo = 0
 
-        while let lfIndex = buffer.firstIndex(of: lf) {
-            // Line content is everything before the LF, minus a preceding CR if present.
-            var end = lfIndex
-            if end > buffer.startIndex, buffer[buffer.index(before: end)] == cr {
-                end = buffer.index(before: end)
+        buffer.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
+            let bytes = raw.bindMemory(to: UInt8.self)
+            var lineStart = 0
+            let n = bytes.count
+            var i = 0
+            while i < n {
+                if bytes[i] == lf {
+                    var end = i
+                    if end > lineStart, bytes[end - 1] == cr { end -= 1 }
+                    lines.append(Data(bytes[lineStart..<end]))
+                    lineStart = i + 1
+                }
+                i += 1
             }
-            let line = buffer[buffer.startIndex..<end]
-            lines.append(Data(line))
-            // Advance past the LF.
-            buffer = Data(buffer[buffer.index(after: lfIndex)...])
+            consumedUpTo = lineStart
+        }
+
+        // Keep only the unterminated tail; done once instead of per line.
+        if consumedUpTo > 0 {
+            buffer = consumedUpTo < buffer.count
+                ? Data(buffer[(buffer.startIndex + consumedUpTo)...])
+                : Data()
         }
         return lines
     }

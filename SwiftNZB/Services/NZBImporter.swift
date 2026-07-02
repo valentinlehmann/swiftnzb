@@ -31,11 +31,18 @@ struct NZBImporter {
         guard let data = try? Data(contentsOf: url) else { throw NZBImportError.unreadable }
 
         FileLocationService.shared.ensureBaseFolders()
-        let savedURL = FileLocationService.shared.nzbFolder.appendingPathComponent(url.lastPathComponent)
+        // Keep a copy under a unique name so re-importing a file with the same name doesn't clobber
+        // an earlier one.
+        let base = FileLocationService.shared.sanitized(url.deletingPathExtension().lastPathComponent)
+        let savedURL = FileLocationService.shared.nzbFolder
+            .appendingPathComponent("\(base)-\(UUID().uuidString.prefix(8)).nzb")
         try? data.write(to: savedURL, options: .atomic)
 
         let parsed = NZBParser.parse(data: data)
-        guard !parsed.files.isEmpty else { throw NZBImportError.empty }
+        guard !parsed.files.isEmpty else {
+            // Empty either because the file isn't a valid NZB or it genuinely lists no files.
+            throw parsed.parseFailed ? NZBImportError.unreadable : NZBImportError.empty
+        }
 
         let fallbackName = url.deletingPathExtension().lastPathComponent
         let name = parsed.title?.isEmpty == false ? parsed.title! : fallbackName
@@ -48,11 +55,14 @@ struct NZBImporter {
 struct ParsedNZB {
     var title: String?
     var files: [NZBFileSummary]
+    /// True if the XML was malformed (as opposed to well-formed but listing no files).
+    var parseFailed: Bool = false
 }
 
 private final class NZBParser: NSObject, XMLParserDelegate {
     private var files: [NZBFileSummary] = []
     private var title: String?
+    private var parseFailed = false
 
     // Current <file>
     private var currentSubject: String?
@@ -69,8 +79,15 @@ private final class NZBParser: NSObject, XMLParserDelegate {
         let parser = NZBParser()
         let xml = XMLParser(data: data)
         xml.delegate = parser
-        xml.parse()
-        return ParsedNZB(title: parser.title, files: parser.files)
+        let ok = xml.parse()
+        // Treat a fatal XML error with nothing recovered as a malformed file (so the user gets a
+        // clear "couldn't read" rather than a silent, truncated import).
+        let failed = (!ok || parser.parseFailed) && parser.files.isEmpty
+        return ParsedNZB(title: parser.title, files: parser.files, parseFailed: failed)
+    }
+
+    func parser(_ parser: XMLParser, parseErrorOccurred parseError: Error) {
+        parseFailed = true
     }
 
     func parser(_ parser: XMLParser, didStartElement elementName: String,

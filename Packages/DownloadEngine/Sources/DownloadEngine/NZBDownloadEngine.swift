@@ -10,6 +10,13 @@
 //  Pause/resume is implemented at the app layer as cancel + re-run: a new run loads the checkpoint
 //  and skips resolved segments, so this type only needs start + cancel.
 //
+//  Failure policy (the state-integrity invariant): a segment is recorded as permanently `missing`
+//  ONLY when the server says the article is genuinely gone (430/423/420) or its bytes are durably
+//  corrupt (persistent CRC/decode failure). Transient conditions — timeouts, dropped sockets, a
+//  cell dead-zone — are requeued and, if still unresolved when the run ends, fail the job as
+//  RETRYABLE without poisoning the checkpoint, so resuming re-fetches them. A flaky link degrades
+//  throughput; it never bakes a hole into the output.
+//
 
 import Foundation
 
@@ -28,16 +35,19 @@ public actor NZBDownloadEngine {
 
     private var downloadedBytes = 0
     private var bytesAtLastTick = 0
+    private var smoothedBytesPerSecond = 0.0
     private var activeConnections = 0
     private var completed: Set<String> = []
     private var missing: Set<String> = []
+    private var transientlyFailed: Set<String> = []
+    private var authFailureReason: String?
     private var perFileTotal: [String: Int] = [:]
     private var perFileResolved: [String: Int] = [:]
     private var perFileMissing: [String: Int] = [:]
     private var finalizedFiles: Set<String> = []
 
     private static let maxAttemptsPerSegment = 5
-    private static let fetchTimeout: Double = 45
+    private static let fetchTimeout: Double = 30
 
     // MARK: - Public API
 
@@ -56,6 +66,13 @@ public actor NZBDownloadEngine {
 
     public func cancel() {
         currentTask?.cancel()
+    }
+
+    /// Persist the current checkpoint immediately. Call before the app suspends so an interrupted
+    /// download resumes from the latest state instead of the last debounced write.
+    public func flushCheckpoint() async {
+        guard let checkpointStore else { return }
+        await checkpointStore.flush(Checkpoint(jobID: jobID, completedSegmentIDs: completed, missingSegmentIDs: missing))
     }
 
     // MARK: - Orchestration
@@ -86,7 +103,11 @@ public actor NZBDownloadEngine {
                 .filter { completed.contains($0.id) }
                 .reduce(0) { $0 + $1.byteCount }
             do {
-                try await assembler.prepare(fileID: file.id, filename: file.filename, totalBytes: file.totalBytes)
+                let alreadyComplete = try await assembler.prepare(
+                    fileID: file.id, filename: file.filename, totalBytes: file.totalBytes)
+                // A file finalized in a previous run must not be re-created/re-finalized (that
+                // would zero-clobber good output).
+                if alreadyComplete { finalizedFiles.insert(file.id) }
             } catch {
                 emit(.finished(.failed(reason: "Could not create scratch file: \(error.localizedDescription)")))
                 return
@@ -129,8 +150,15 @@ public actor NZBDownloadEngine {
 
         await checkpointStore.flush(Checkpoint(jobID: job.id, completedSegmentIDs: completed, missingSegmentIDs: missing))
 
-        if Task.isCancelled {
+        // Terminal outcome, in priority order. Auth/permission failures are configuration errors;
+        // transient exhaustion means the link gave out — both are retryable and must NOT be
+        // reported as a completed (holed) download.
+        if let reason = authFailureReason {
+            emit(.finished(.failed(reason: reason)))
+        } else if Task.isCancelled {
             emit(.finished(.cancelled))
+        } else if !transientlyFailed.isEmpty {
+            emit(.finished(.failed(reason: "The connection dropped before the download finished. It will resume when you retry.")))
         } else {
             emit(.finished(.completed(downloadedBytes: downloadedBytes, missingSegments: missing.count)))
         }
@@ -142,11 +170,12 @@ public actor NZBDownloadEngine {
         var connection: NNTPConnection?
         let maxAttempts = Self.maxAttemptsPerSegment
 
-        while !Task.isCancelled {
+        workLoop: while !Task.isCancelled {
             guard let item = await scheduler.next() else { break }
             var attempts = 0
 
-            attemptLoop: while !Task.isCancelled {
+            attemptLoop: while true {
+                if Task.isCancelled { break workLoop }   // cancellation never records an outcome
                 attempts += 1
 
                 if connection == nil {
@@ -155,13 +184,22 @@ public actor NZBDownloadEngine {
                         try await candidate.open()
                         connection = candidate
                         await connectionOpened()
+                    } catch let error as NNTPError {
+                        if case .authenticationFailed(let code) = error {
+                            await recordAuthFailure(code: code); return
+                        }
+                        if case .cancelled = error { break workLoop }
+                        // Transient connect failure (unreachable/refused/timeout): retry, then hand
+                        // the segment back for a later attempt rather than losing it.
+                        if attempts >= maxAttempts {
+                            await giveUpTransiently(item, scheduler: scheduler); break attemptLoop
+                        }
+                        try? await Task.sleep(for: backoff(attempts)); continue
                     } catch {
                         if attempts >= maxAttempts {
-                            await markMissing(item, reason: "no connection")
-                            break attemptLoop
+                            await giveUpTransiently(item, scheduler: scheduler); break attemptLoop
                         }
-                        try? await Task.sleep(for: backoff(attempts))
-                        continue
+                        try? await Task.sleep(for: backoff(attempts)); continue
                     }
                 }
                 guard let conn = connection else { continue }
@@ -171,37 +209,52 @@ public actor NZBDownloadEngine {
                     let segment = try YEncDecoder.decode(bodyLines: lines)
 
                     if segment.crcMatches == false {
+                        // The article's bytes are corrupt on the server — retrying the same
+                        // article won't help; after exhausting attempts treat it as missing so
+                        // PAR2 can repair it. Corruption is not a transient network condition.
                         await conn.close(); await connectionClosed(); connection = nil
                         if attempts >= maxAttempts {
-                            await markMissing(item, reason: "CRC mismatch")
-                            break attemptLoop
+                            await markMissing(item, reason: "CRC mismatch"); break attemptLoop
                         }
-                        try? await Task.sleep(for: backoff(attempts))
-                        continue
+                        try? await Task.sleep(for: backoff(attempts)); continue
                     }
 
-                    try await assembler.write(fileID: item.fileID, data: segment.data, at: segment.fileOffset)
+                    try await assembler.write(fileID: item.fileID, data: segment.data,
+                                              at: segment.fileOffset, declaredFileSize: segment.header.size)
                     await markCompleted(item, bytes: segment.data.count)
                     break attemptLoop
                 } catch let error as NNTPError {
                     if case .articleUnavailable = error {
-                        await markMissing(item, reason: "article unavailable")
-                        break attemptLoop
+                        // Genuinely, permanently gone. Connection is still healthy — keep it.
+                        await markMissing(item, reason: "article unavailable"); break attemptLoop
                     }
+                    if case .authenticationFailed(let code) = error {
+                        await conn.close(); await connectionClosed(); connection = nil
+                        await recordAuthFailure(code: code); return
+                    }
+                    // Transient network error — drop the (possibly half-open) connection and retry.
+                    await conn.close(); await connectionClosed(); connection = nil
+                    if Task.isCancelled { break workLoop }
+                    if attempts >= maxAttempts {
+                        await giveUpTransiently(item, scheduler: scheduler); break attemptLoop
+                    }
+                    try? await Task.sleep(for: backoff(attempts)); continue
+                } catch is YEncError {
+                    // Malformed article body — like corruption, PAR2 territory after retries.
                     await conn.close(); await connectionClosed(); connection = nil
                     if attempts >= maxAttempts {
-                        await markMissing(item, reason: "transient error")
-                        break attemptLoop
+                        await markMissing(item, reason: "decode error"); break attemptLoop
                     }
-                    try? await Task.sleep(for: backoff(attempts))
+                    try? await Task.sleep(for: backoff(attempts)); continue
                 } catch {
-                    // Decode / disk error.
+                    // Local disk (or unknown) error — do NOT silently hole the file; treat it as a
+                    // retryable failure.
                     await conn.close(); await connectionClosed(); connection = nil
+                    if Task.isCancelled { break workLoop }
                     if attempts >= maxAttempts {
-                        await markMissing(item, reason: "decode error")
-                        break attemptLoop
+                        await giveUpTransiently(item, scheduler: scheduler); break attemptLoop
                     }
-                    try? await Task.sleep(for: backoff(attempts))
+                    try? await Task.sleep(for: backoff(attempts)); continue
                 }
             }
         }
@@ -217,6 +270,7 @@ public actor NZBDownloadEngine {
     private func markCompleted(_ item: SegmentScheduler.WorkItem, bytes: Int) async {
         guard !completed.contains(item.segment.id) else { return }
         completed.insert(item.segment.id)
+        transientlyFailed.remove(item.segment.id)   // a requeued segment that finally succeeded
         downloadedBytes += bytes
         perFileResolved[item.fileID, default: 0] += 1
         emit?(.segmentCompleted(fileID: item.fileID, segmentID: item.segment.id, decodedBytes: bytes))
@@ -232,6 +286,19 @@ public actor NZBDownloadEngine {
         emit?(.segmentMissing(fileID: item.fileID, segmentID: item.segment.id, reason: reason))
         scheduleCheckpoint()
         await maybeFinalize(item.fileID)
+    }
+
+    /// Transient exhaustion: try to hand the segment back to the queue; if it has been requeued too
+    /// many times, record it as a (non-persisted) transient failure so the run ends as retryable.
+    private func giveUpTransiently(_ item: SegmentScheduler.WorkItem, scheduler: SegmentScheduler) async {
+        if await scheduler.requeue(item) { return }
+        transientlyFailed.insert(item.segment.id)
+    }
+
+    private func recordAuthFailure(code: Int) {
+        guard authFailureReason == nil else { return }
+        authFailureReason = "The server rejected the login (code \(code)). Check the username and password in Settings."
+        currentTask?.cancel()   // stop the whole job — a per-segment retry can't fix a login error
     }
 
     private func maybeFinalize(_ fileID: String) async {
@@ -258,7 +325,15 @@ public actor NZBDownloadEngine {
     private func emitProgressTick() {
         let delta = max(0, downloadedBytes - bytesAtLastTick)
         bytesAtLastTick = downloadedBytes
-        emit?(.progress(downloadedBytes: downloadedBytes, bytesPerSecond: delta, activeConnections: activeConnections))
+        // Exponential moving average so the reported speed (and the Live Activity ETA it feeds)
+        // doesn't lurch with per-second noise on a mobile link.
+        let alpha = 0.4
+        smoothedBytesPerSecond = smoothedBytesPerSecond == 0
+            ? Double(delta)
+            : alpha * Double(delta) + (1 - alpha) * smoothedBytesPerSecond
+        emit?(.progress(downloadedBytes: downloadedBytes,
+                        bytesPerSecond: Int(smoothedBytesPerSecond.rounded()),
+                        activeConnections: activeConnections))
     }
 
     private func scheduleCheckpoint() {
@@ -270,14 +345,16 @@ public actor NZBDownloadEngine {
     private func resetState() {
         emit = nil; jobID = ""; workingDir = nil; assembler = nil; checkpointStore = nil
         filesByID = [:]
-        downloadedBytes = 0; bytesAtLastTick = 0; activeConnections = 0
-        completed = []; missing = []
+        downloadedBytes = 0; bytesAtLastTick = 0; smoothedBytesPerSecond = 0; activeConnections = 0
+        completed = []; missing = []; transientlyFailed = []; authFailureReason = nil
         perFileTotal = [:]; perFileResolved = [:]; perFileMissing = [:]; finalizedFiles = []
     }
 
     // MARK: - Helpers
 
-    /// Race a body fetch against a stall timeout; on timeout, close the connection to unblock it.
+    /// Race a body fetch against a stall timeout. Only the timeout path closes the connection (to
+    /// unblock the suspended read); other errors are rethrown with the connection intact so a
+    /// healthy "article unavailable" response doesn't needlessly tear down a reusable connection.
     private nonisolated func fetchWithTimeout(_ conn: NNTPConnection, messageID: String) async throws -> [Data] {
         let timeout = Self.fetchTimeout
         return try await withThrowingTaskGroup(of: [Data].self) { group in
@@ -286,13 +363,11 @@ public actor NZBDownloadEngine {
                 try await Task.sleep(for: .seconds(timeout))
                 throw NNTPError.timeout
             }
+            defer { group.cancelAll() }
             do {
-                let result = try await group.next()!
-                group.cancelAll()
-                return result
-            } catch {
+                return try await group.next()!
+            } catch let error as NNTPError where error == .timeout {
                 await conn.close()
-                group.cancelAll()
                 throw error
             }
         }

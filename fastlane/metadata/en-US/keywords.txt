@@ -1,0 +1,1 @@
+usenet,nzb,nntp,newsreader,newsgroup,downloader,download,par2,rar,unrar,binary,client

@@ -13,7 +13,7 @@ struct StorageSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Picker("Output layout", selection: $settingsStore.settings.folderMode) {
+                Picker("Output Layout", selection: $settingsStore.settings.folderMode) {
                     ForEach(FolderMode.allCases, id: \.self) { mode in
                         Text(mode.title).tag(mode)
                     }

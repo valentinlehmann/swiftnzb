@@ -3,17 +3,17 @@
 //  SwiftNZB
 //
 
-import Foundation
+import SwiftUI
 
 /// How completed output is laid out under the Files-visible completed folder.
 enum FolderMode: String, Codable, CaseIterable, Sendable {
     case perJobSubfolder    // complete/<job name>/…
     case flat               // complete/…
 
-    var title: String {
+    var title: LocalizedStringKey {
         switch self {
-        case .perJobSubfolder: return "Subfolder per download"
-        case .flat: return "Single folder"
+        case .perJobSubfolder: return "Subfolder per Download"
+        case .flat: return "Single Folder"
         }
     }
 }

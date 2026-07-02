@@ -13,10 +13,11 @@ import AppIntents
 struct DownloadLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: DownloadActivityAttributes.self) { context in
+            // No forced background tint: on iOS 26 the system renders Live Activities on adaptive
+            // glass, so an opaque black tint looks foreign in light environments / StandBy.
             lockScreen(context)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 14)
-                .activityBackgroundTint(Color.black.opacity(0.6))
         } dynamicIsland: { context in
             let state = context.state
             return DynamicIsland {
@@ -38,7 +39,7 @@ struct DownloadLiveActivity: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack {
-                        Text(verbatim: subtitle(state))
+                        subtitle(state)
                             .foregroundStyle(.secondary)
                         Spacer()
                         eta(state)
@@ -50,10 +51,10 @@ struct DownloadLiveActivity: Widget {
                 Image(systemName: icon(state))
                     .foregroundStyle(tint(state))
             } compactTrailing: {
-                Text(verbatim: percentText(state))
-                    .font(.caption2)
-                    .monospacedDigit()
-                    .frame(maxWidth: 44)
+                // The canonical Island download indicator: a small circular gauge.
+                ProgressView(value: state.fractionComplete)
+                    .progressViewStyle(.circular)
+                    .tint(tint(state))
             } minimal: {
                 Image(systemName: icon(state))
                     .foregroundStyle(tint(state))
@@ -70,7 +71,7 @@ struct DownloadLiveActivity: Widget {
                         .font(.headline)
                         .lineLimit(1)
                         .foregroundStyle(tint(state))
-                    Text(verbatim: subtitle(state))
+                    subtitle(state)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -91,26 +92,36 @@ struct DownloadLiveActivity: Widget {
     }
 
     /// Interactive pause/resume. Runs `PauseJobIntent` / `ResumeJobIntent` in the app process.
+    /// Live Activities don't support glass button styles, so a tinted 44pt circle gives the
+    /// required hit target.
     @ViewBuilder
     private func actionButton(_ context: ActivityViewContext<DownloadActivityAttributes>) -> some View {
         if context.state.isPaused {
             Button(intent: ResumeJobIntent(jobID: context.attributes.jobID)) {
                 Image(systemName: "play.fill")
+                    .frame(width: 44, height: 44)
+                    .background(.white.opacity(0.15), in: .circle)
             }
             .buttonStyle(.plain)
             .tint(.green)
+            .accessibilityLabel(Text("Resume"))
         } else {
             Button(intent: PauseJobIntent(jobID: context.attributes.jobID)) {
                 Image(systemName: "pause.fill")
+                    .frame(width: 44, height: 44)
+                    .background(.white.opacity(0.15), in: .circle)
             }
             .buttonStyle(.plain)
             .tint(.orange)
+            .accessibilityLabel(Text("Pause"))
         }
     }
 
     @ViewBuilder
     private func eta(_ state: DownloadActivityAttributes.ContentState) -> some View {
-        if let deadline = state.etaDeadline, !state.isPaused, state.stepRaw == nil {
+        // Only render the self-updating countdown while the deadline is still in the future —
+        // `Text(timerInterval:)` with a past lowerBound traps.
+        if let deadline = state.etaDeadline, !state.isPaused, state.stepRaw == nil, deadline > .now {
             Text(timerInterval: Date.now...deadline, countsDown: true)
                 .monospacedDigit()
         } else {
@@ -122,13 +133,30 @@ struct DownloadLiveActivity: Widget {
         "\(Int((state.fractionComplete * 100).rounded()))%"
     }
 
-    /// Status / speed line. While downloading this is the throughput; otherwise a state label.
-    private func subtitle(_ state: DownloadActivityAttributes.ContentState) -> String {
-        if state.isWaitingForNetwork { return "Waiting for network…" }
-        if let step = state.stepRaw { return step.capitalized }
-        if state.isPaused { return "Paused" }
-        let rate = Int64(state.bytesPerSecond).formatted(.byteCount(style: .file))
-        return "\(rate)/s"
+    /// Status / speed line. While downloading this is the throughput; otherwise a localized state
+    /// label. Post-processing steps are mapped from their raw value to a readable label.
+    @ViewBuilder
+    private func subtitle(_ state: DownloadActivityAttributes.ContentState) -> some View {
+        if state.isWaitingForNetwork {
+            Text("Waiting for network…")
+        } else if let step = state.stepRaw {
+            Text(stepLabel(step))
+        } else if state.isPaused {
+            Text("Paused")
+        } else {
+            Text(verbatim: "\(Int64(state.bytesPerSecond).formatted(.byteCount(style: .file)))/s")
+        }
+    }
+
+    private func stepLabel(_ raw: String) -> LocalizedStringKey {
+        switch raw {
+        case "assemble": return "Assembling"
+        case "verify": return "Verifying"
+        case "repair": return "Repairing"
+        case "extract": return "Extracting"
+        case "cleanup": return "Cleaning up"
+        default: return "Processing"
+        }
     }
 
     private func icon(_ state: DownloadActivityAttributes.ContentState) -> String {
@@ -140,7 +168,7 @@ struct DownloadLiveActivity: Widget {
 
     private func tint(_ state: DownloadActivityAttributes.ContentState) -> Color {
         if state.isWaitingForNetwork { return .orange }
-        if state.isPaused { return .secondary }
+        if state.isPaused { return .orange }
         return .accentColor
     }
 }

@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>$(DISPLAY_NAME)</string>
+	<string>SwiftNZB</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -26,23 +26,21 @@
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
-	<string>NO</string>
+	<false/>
 
 	<!-- Live Activity (download progress on Lock Screen + Dynamic Island). -->
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 
-	<!-- Background execution: opportunistic processing + app refresh (see BackgroundTaskService).
-	     iOS cannot sustain raw-socket NNTP downloads while suspended; these only nudge the queue
-	     and refresh the Live Activity when the system grants time. -->
+	<!-- Background execution: a single opportunistic BGProcessingTask (see BackgroundTaskService).
+	     iOS cannot sustain raw-socket NNTP downloads while suspended; this only nudges the queue
+	     and persists resume state when the system grants time. Declare only what we use. -->
 	<key>UIBackgroundModes</key>
 	<array>
-		<string>fetch</string>
 		<string>processing</string>
 	</array>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>de.valentinlehmann.swiftnzb.refresh</string>
 		<string>de.valentinlehmann.swiftnzb.processing</string>
 	</array>
 
@@ -94,14 +92,11 @@
 		</dict>
 	</array>
 
-	<!-- Usenet hosts are user-entered and frequently use plain NNTP (119) or self-signed TLS,
-	     so NSAllowsLocalNetworking is insufficient. App Store review note: justify arbitrary
-	     loads as "connects to user-configured Usenet (NNTP) servers." -->
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsArbitraryLoads</key>
-		<true/>
-	</dict>
+	<!-- No App Transport Security exception is declared. ATS governs the URL Loading System
+	     (URLSession/CFNetwork); this app performs no such requests. All Usenet traffic uses
+	     Network.framework (NWConnection), which ATS does not police, so plain-NNTP and self-signed
+	     TLS servers already work — and omitting a global exception avoids unnecessary review
+	     scrutiny. Re-add a scoped exception only if HTTP URL loading is ever introduced. -->
 
 	<key>CFBundleURLTypes</key>
 	<array>
@@ -116,10 +111,7 @@
 	</array>
 
 	<key>UILaunchScreen</key>
-	<dict>
-		<key>UIViewControllerBasedStatusBarAppearance</key>
-		<false/>
-	</dict>
+	<dict/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

@@ -1,0 +1,10 @@
+SwiftNZB is a client for the open NNTP (Usenet) protocol — functionally comparable to an email client: the user supplies their own server account from a commercial Usenet provider, and the app downloads the specific file attachments described by an .nzb document the user imports themselves.
+
+The app contains no content, no search feature, no content index or catalog, and no way to discover or browse anything inside the app. It cannot fetch NZB files from the internet; the only input path is the iOS document picker / share sheet. PAR2 and RAR support are standard data-integrity utilities (Usenet transmissions are split and error-coded; the app verifies and reassembles them).
+
+Nothing is collected or transmitted to us; the app talks exclusively to the server the user configures. There are no third-party SDKs, no analytics, no ads.
+
+HOW TO TEST:
+1. Launch the app and tap "Add Server". Enter the demo account credentials provided in the demo account fields and tap Save (the app verifies the connection). Port 563, SSL on.
+2. Open the attached demo file "swiftnzb-review-demo.nzb" (AirDrop or Files app -> share -> SwiftNZB, or the + button on the Queue tab) and tap "Add".
+3. The download runs with a Live Activity on the Lock Screen / Dynamic Island; when it finishes, the file is verified (PAR2), extracted (RAR), and appears in the Files app under "On My iPhone -> SwiftNZB". The demo file contains test data created by us.

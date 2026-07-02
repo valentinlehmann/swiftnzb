@@ -1,0 +1,25 @@
+SwiftNZB is a native Usenet (NNTP) client for iPhone and iPad. Connect your own Usenet provider account, import an NZB file, and SwiftNZB downloads it straight to the Files app — verified, repaired, and extracted automatically.
+
+Like an email app needs a mail account, SwiftNZB needs a Usenet provider account (sold separately by commercial providers). The app contains no content and no search — you import your own NZB files through the share sheet or file picker, and SwiftNZB handles the rest.
+
+FAST, RELIABLE ENGINE
+• Parallel TLS connections to your server, tuned automatically
+• Built for real-world mobile networks: seamlessly survives cell handoffs, dropped connections, and Wi-Fi/cellular switches
+• Pause, resume, and reorder downloads; everything picks up exactly where it left off — even after force-quitting
+• Optional download speed limit and cellular controls
+
+AUTOMATIC POST-PROCESSING
+• PAR2 verification and error repair, fully on-device
+• RAR archive extraction, including multi-volume sets
+• Finished files appear in the Files app, organized per download
+
+MADE FOR iOS
+• Live Activity with progress on the Lock Screen and in the Dynamic Island, including pause/resume buttons
+• Native SwiftUI design for iPhone and iPad
+• Server settings sync across your devices via iCloud; passwords stay in your Keychain
+• No ads, no tracking, no accounts — the app talks only to the server you configure
+
+PRIVATE BY DESIGN
+SwiftNZB collects no data. Your credentials are stored in the system Keychain, and downloads never touch any server other than your own Usenet provider.
+
+SwiftNZB requires an account with a Usenet provider. Only download content you have the right to access.

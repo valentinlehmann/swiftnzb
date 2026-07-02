@@ -55,7 +55,7 @@ struct ServersSettingsView: View {
 
             if servers.accounts.count > 1 {
                 Section {
-                    Picker("Default server", selection: defaultServerBinding) {
+                    Picker("Default Server", selection: defaultServerBinding) {
                         ForEach(servers.accounts) { account in
                             Text(account.name).tag(UUID?.some(account.id))
                         }

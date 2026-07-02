@@ -32,6 +32,7 @@ struct AddServerView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.URL)
+                    .textContentType(.URL)
                 Toggle("Use SSL", isOn: $viewModel.useSSL)
                 TextField("Port", text: $viewModel.portText)
                     .keyboardType(.numberPad)
@@ -45,11 +46,13 @@ struct AddServerView: View {
                 TextField("Username", text: $viewModel.username)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                    .textContentType(.username)
                 SecureField("Password", text: $viewModel.password)
+                    .textContentType(.password)
             }
 
             Section("Performance") {
-                TextField("Max connections", text: $viewModel.maxConnectionsText)
+                TextField("Max Connections", text: $viewModel.maxConnectionsText)
                     .keyboardType(.numberPad)
             }
 

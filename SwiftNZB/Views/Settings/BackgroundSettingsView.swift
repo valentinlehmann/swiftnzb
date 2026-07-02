@@ -11,7 +11,7 @@ struct BackgroundSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Only when charging", isOn: $settingsStore.settings.requireExternalPowerForBackground)
+                Toggle("Only When Charging", isOn: $settingsStore.settings.requireExternalPowerForBackground)
             } footer: {
                 Text("Limits opportunistic background resume to when the device is plugged in, to save battery.")
             }

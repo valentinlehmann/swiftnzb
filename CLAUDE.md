@@ -113,10 +113,17 @@ SwiftNZBWidgets/             Live Activity (WidgetKit)
 - **iCloud KVS capability** must be enabled on the App ID (entitlement
   `com.apple.developer.ubiquity-kvstore-identifier`) or server/settings sync degrades to
   local-only (no crash).
-- **App Store review notes**: ATS `NSAllowsArbitraryLoads` is justified by "connects to
-  user-configured Usenet (NNTP) servers" (arbitrary hosts, plain NNTP/self-signed TLS). The app
-  bundles no indexers or content — bring-your-own server + NZB. PAR2/unrar are generic file
-  utilities. NZB/Usenet apps draw heightened scrutiny; keep the framing clean.
+- **App Transport Security**: the app declares **no** ATS exception. ATS governs only the URL
+  Loading System (URLSession/CFNetwork); all Usenet traffic uses `NWConnection`
+  (Network.framework), which ATS does not police — so plain NNTP / self-signed TLS already work
+  without `NSAllowsArbitraryLoads`. Omitting a global exception avoids unnecessary review
+  scrutiny. Re-add a *scoped* exception only if HTTP URL loading (e.g. NZB-by-URL) is introduced.
+- **App Store review notes**: the app bundles no indexers or content — bring-your-own server +
+  NZB. PAR2/unrar are generic file utilities. NZB/Usenet apps draw heightened scrutiny; keep the
+  framing as a generic NNTP protocol client (see `docs/AppStoreReview.md` for the full strategy,
+  demo-account/demo-NZB plan, and rejection playbook, plus listing texts in `fastlane/metadata/`).
+- **Privacy manifests**: both targets ship a `PrivacyInfo.xcprivacy` (app: UserDefaults CA92.1,
+  file timestamps C617.1, disk space E174.1; widget: none). Data-not-collected, no tracking.
 
 ## Gotchas recap
 

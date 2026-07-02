@@ -35,6 +35,21 @@ actor SegmentScheduler {
         return pending[cursor]
     }
 
+    /// Put a segment back at the end of the queue so another worker (on a fresh connection) can
+    /// retry it later. Used when a segment exhausts its per-attempt retries on a transient error —
+    /// the alternative (recording it as permanently missing) would corrupt the output on a flaky
+    /// link. A per-item requeue budget stops a truly dead segment from looping forever.
+    func requeue(_ item: WorkItem) -> Bool {
+        let count = (requeues[item.segment.id] ?? 0) + 1
+        guard count <= Self.maxRequeues else { return false }
+        requeues[item.segment.id] = count
+        pending.append(item)
+        return true
+    }
+
+    private var requeues: [String: Int] = [:]
+    private static let maxRequeues = 3
+
     var remainingCount: Int { max(0, pending.count - cursor) }
     var totalCount: Int { pending.count }
 }

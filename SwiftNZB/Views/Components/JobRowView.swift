@@ -23,11 +23,14 @@ struct JobRowView: View {
 
             ProgressView(value: job.progress)
                 .tint(job.status.tint)
+                .animation(.default, value: job.progress)
 
             HStack {
                 Text(verbatim: "\(Format.bytes(job.downloadedBytes)) / \(Format.bytes(job.totalBytes))")
                 Spacer()
                 trailingDetail
+                    .contentTransition(.numericText())
+                    .animation(.default, value: bytesPerSecond)
             }
             .font(.caption.monospacedDigit())
             .foregroundStyle(.secondary)

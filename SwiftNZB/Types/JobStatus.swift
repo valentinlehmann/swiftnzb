@@ -31,9 +31,6 @@ enum JobStatus: String, Codable, CaseIterable, Sendable {
         }
     }
 
-    /// Plain (unlocalized) title for `Text(verbatim:)` interpolation.
-    var titleText: String { rawValue.capitalized }
-
     var systemImage: String {
         switch self {
         case .queued: return "clock"
@@ -50,12 +47,14 @@ enum JobStatus: String, Codable, CaseIterable, Sendable {
 
     var tint: Color {
         switch self {
-        case .queued, .paused: return .secondary
+        // Orange consistently means "intentionally on hold / needs attention" (matching the
+        // pause controls), grey means inert, red failure, green success, purple post-processing.
+        case .queued, .cancelled: return .secondary
+        case .paused: return .orange
         case .downloading: return .accentColor
         case .verifying, .repairing, .extracting: return .purple
         case .completed: return .green
         case .failed: return .red
-        case .cancelled: return .orange
         }
     }
 
