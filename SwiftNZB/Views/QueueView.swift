@@ -22,16 +22,14 @@ struct QueueView: View {
     private var waitingJobs: [DownloadJob] { manager.waitingQueueJobs }
 
     var body: some View {
-        Group {
+        // NOTE: a real container (ZStack) — not a Group — so the presentation
+        // modifiers below are hosted on one stable view. With a Group, modifiers
+        // attach to each child individually, so the .fileImporter would be torn
+        // down when the empty↔list content swaps mid-presentation, leaving
+        // `isImporting` stuck `true` and the dialog permanently unopenable.
+        ZStack {
             if manager.queueJobs.isEmpty {
-                ContentUnavailableView {
-                    Label("No Downloads", systemImage: "tray.and.arrow.down")
-                } description: {
-                    Text("Import an NZB file to start downloading.")
-                } actions: {
-                    Button("Add NZB") { isImporting = true }
-                        .buttonStyle(.glassProminent)
-                }
+                emptyState
             } else {
                 list
             }
@@ -62,6 +60,25 @@ struct QueueView: View {
 
     private var cancelBinding: Binding<Bool> {
         Binding(get: { cancelCandidate != nil }, set: { if !$0 { cancelCandidate = nil } })
+    }
+
+    /// Single entry point for both the empty-state and toolbar "Add NZB" buttons.
+    /// Guards against re-triggering while the picker is already presenting so
+    /// rapid taps can't desync the presentation state.
+    private func presentImporter() {
+        guard !isImporting else { return }
+        isImporting = true
+    }
+
+    private var emptyState: some View {
+        ContentUnavailableView {
+            Label("No Downloads", systemImage: "tray.and.arrow.down")
+        } description: {
+            Text("Import an NZB file to start downloading.")
+        } actions: {
+            Button("Add NZB") { presentImporter() }
+                .buttonStyle(.glassProminent)
+        }
     }
 
     private var list: some View {
@@ -114,7 +131,7 @@ struct QueueView: View {
             ToolbarItem(placement: .topBarLeading) { EditButton() }
         }
         ToolbarItem(placement: .primaryAction) {
-            Button { isImporting = true } label: { Label("Add NZB", systemImage: "plus") }
+            Button { presentImporter() } label: { Label("Add NZB", systemImage: "plus") }
                 .keyboardShortcut("n", modifiers: .command)
         }
     }
