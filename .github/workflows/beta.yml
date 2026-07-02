@@ -3,6 +3,12 @@ on:
   push:
     branches:
       - 'main'
+    # Docs and the GitHub Pages site (docs/) don't affect the app — don't spend a
+    # TestFlight build on them. Pages deploys via its own workflow, unaffected by this.
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - 'LICENSE'
 jobs:
   build:
     runs-on: macos-latest
