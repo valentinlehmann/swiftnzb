@@ -136,15 +136,7 @@ struct JobDetailView: View {
                     DisclosureGroup(isExpanded: expansion(kind)) {
                         ForEach(files) { FileProgressRow(file: $0) }
                     } label: {
-                        HStack {
-                            Label(kind.title, systemImage: kind.groupSystemImage)
-                                .font(.subheadline)
-                            Spacer()
-                            // Text("\(count)") would pick up a locale thousands separator.
-                            Text(verbatim: "\(files.count)")
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                        }
+                        FileKindGroupLabel(kind: kind, count: files.count)
                     }
                 }
             }
