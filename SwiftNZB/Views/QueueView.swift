@@ -8,6 +8,7 @@ import UniformTypeIdentifiers
 
 struct QueueView: View {
     @State private var manager = DownloadManager.shared
+    @State private var router = AppRouter.shared
     @State private var isImporting = false
     @State private var cancelCandidate: DownloadJob?
 
@@ -34,6 +35,8 @@ struct QueueView: View {
                 list
             }
         }
+        .overlay(alignment: .bottom) { completionBanner }
+        .animation(.default, value: manager.recentlyCompletedJobID)
         .navigationTitle("Queue")
         .navigationDestination(for: UUID.self) { JobDetailView(jobID: $0) }
         .toolbar { toolbar }
@@ -74,10 +77,45 @@ struct QueueView: View {
         ContentUnavailableView {
             Label("No Downloads", systemImage: "tray.and.arrow.down")
         } description: {
-            Text("Import an NZB file to start downloading.")
+            Text("Import an NZB file to start downloading. Finished downloads move to History.")
         } actions: {
             Button("Add NZB") { presentImporter() }
                 .buttonStyle(.glassProminent)
+        }
+    }
+
+    /// A finished job leaves the queue the moment it completes. Say so, and offer the one tap that
+    /// gets there, rather than letting the row silently disappear.
+    @ViewBuilder
+    private var completionBanner: some View {
+        if let id = manager.recentlyCompletedJobID,
+           let job = manager.jobs.first(where: { $0.id == id }) {
+            Button {
+                manager.acknowledgeCompletion()
+                router.section = .history
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(job.name).font(.subheadline.weight(.medium)).lineLimit(1)
+                        Text("Finished — moved to History").font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .glassEffect(.regular, in: .rect(cornerRadius: 18))
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 12)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+            .task(id: id) {
+                try? await Task.sleep(for: .seconds(10))
+                manager.acknowledgeCompletion()
+            }
         }
     }
 
