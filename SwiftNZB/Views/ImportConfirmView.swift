@@ -10,6 +10,7 @@ struct ImportConfirmView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var servers = ServerStore.shared
+    @State private var settingsStore = SettingsStore.shared
     @State private var name: String
     @State private var serverID: UUID?
     @State private var selected: Set<UUID>
@@ -75,37 +76,8 @@ struct ImportConfirmView: View {
                     }
                 }
 
-                Section {
-                    ForEach(sortedFiles) { file in
-                        Button {
-                            if selected.contains(file.id) { selected.remove(file.id) } else { selected.insert(file.id) }
-                        } label: {
-                            HStack(spacing: 12) {
-                                CheckboxView(isChecked: selected.contains(file.id))
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(file.filename)
-                                        .lineLimit(1)
-                                        .truncationMode(.middle)
-                                    Text(verbatim: fileSubtitle(file))
-                                        .font(.caption).foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityAddTraits(selected.contains(file.id) ? [.isButton, .isSelected] : .isButton)
-                    }
-                } header: {
-                    HStack {
-                        Text("Files") + Text(verbatim: " (\(selected.count)/\(job.files.count))")
-                        Spacer()
-                        Button(allSelected ? "Deselect All" : "Select All") {
-                            selected = allSelected ? [] : Set(job.files.map(\.id))
-                        }
-                        .font(.caption)
-                        .textCase(nil)
-                    }
+                if settingsStore.settings.fileSelectionOnImport {
+                    fileSelection
                 }
             }
             .navigationTitle("Add to Queue")
@@ -124,6 +96,44 @@ struct ImportConfirmView: View {
                         dismiss()
                     }
                 }
+            }
+        }
+    }
+
+    /// The per-file picker, shown only when the expert setting is on. Deselecting parts of a post
+    /// is a foot-gun — PAR2 repair and extraction need the whole set — so it is opt-in.
+    @ViewBuilder
+    private var fileSelection: some View {
+        Section {
+            ForEach(sortedFiles) { file in
+                Button {
+                    if selected.contains(file.id) { selected.remove(file.id) } else { selected.insert(file.id) }
+                } label: {
+                    HStack(spacing: 12) {
+                        CheckboxView(isChecked: selected.contains(file.id))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(file.filename)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Text(verbatim: fileSubtitle(file))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selected.contains(file.id) ? [.isButton, .isSelected] : .isButton)
+            }
+        } header: {
+            HStack {
+                Text("Files") + Text(verbatim: " (\(selected.count)/\(job.files.count))")
+                Spacer()
+                Button(allSelected ? "Deselect All" : "Select All") {
+                    selected = allSelected ? [] : Set(job.files.map(\.id))
+                }
+                .font(.caption)
+                .textCase(nil)
             }
         }
     }

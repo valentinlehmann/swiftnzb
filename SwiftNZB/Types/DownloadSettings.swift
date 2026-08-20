@@ -38,6 +38,9 @@ struct DownloadSettings: Codable, Equatable, Sendable {
     var keepCompletedHistoryDays: Int
     /// Preselected server in the import sheet; updated to whatever the user last picked there.
     var defaultServerID: UUID?
+    /// Show the per-file picker when adding an NZB. Off by default: leaving parts out breaks PAR2
+    /// repair and extraction, so it only makes sense to someone who knows what a post contains.
+    var fileSelectionOnImport: Bool
 
     static let `default` = DownloadSettings(
         maxGlobalConnections: 20,
@@ -50,7 +53,8 @@ struct DownloadSettings: Codable, Equatable, Sendable {
         pauseOnCellular: false,
         requireExternalPowerForBackground: true,
         keepCompletedHistoryDays: 30,
-        defaultServerID: nil
+        defaultServerID: nil,
+        fileSelectionOnImport: false
     )
 
     // Migration-safe decoder so adding a preference later doesn't break stored/synced settings.
@@ -68,6 +72,8 @@ struct DownloadSettings: Codable, Equatable, Sendable {
         requireExternalPowerForBackground = try c.decodeIfPresent(Bool.self, forKey: .requireExternalPowerForBackground) ?? d.requireExternalPowerForBackground
         keepCompletedHistoryDays = try c.decodeIfPresent(Int.self, forKey: .keepCompletedHistoryDays) ?? d.keepCompletedHistoryDays
         defaultServerID = try c.decodeIfPresent(UUID.self, forKey: .defaultServerID)
+        fileSelectionOnImport = try c.decodeIfPresent(Bool.self, forKey: .fileSelectionOnImport)
+            ?? d.fileSelectionOnImport
     }
 
     init(
@@ -81,7 +87,8 @@ struct DownloadSettings: Codable, Equatable, Sendable {
         pauseOnCellular: Bool,
         requireExternalPowerForBackground: Bool,
         keepCompletedHistoryDays: Int,
-        defaultServerID: UUID? = nil
+        defaultServerID: UUID? = nil,
+        fileSelectionOnImport: Bool = false
     ) {
         self.maxGlobalConnections = maxGlobalConnections
         self.par2VerifyEnabled = par2VerifyEnabled
@@ -94,5 +101,6 @@ struct DownloadSettings: Codable, Equatable, Sendable {
         self.requireExternalPowerForBackground = requireExternalPowerForBackground
         self.keepCompletedHistoryDays = keepCompletedHistoryDays
         self.defaultServerID = defaultServerID
+        self.fileSelectionOnImport = fileSelectionOnImport
     }
 }
