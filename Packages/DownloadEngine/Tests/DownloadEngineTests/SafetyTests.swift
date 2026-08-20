@@ -83,3 +83,22 @@ struct AssemblerNamingTests {
         #expect(url?.lastPathComponent == "fallback.bin")
     }
 }
+
+/// Which of the two candidate names wins. The yEnc header is normally right, but an obfuscated
+/// post puts a hash there — and an extension-less ".par2" breaks PAR2 discovery entirely.
+struct NamePreferenceTests {
+    @Test func headerNameWinsWhenItLooksLikeAFilename() {
+        #expect(FileAssembler.betterName(declared: "A Real Book.epub", fallback: "S.") == "A Real Book.epub")
+        #expect(FileAssembler.betterName(declared: "x.part01.rar", fallback: "x.part01.rar") == "x.part01.rar")
+    }
+
+    @Test func fallbackWinsWhenTheHeaderNameHasNoExtension() {
+        #expect(FileAssembler.betterName(declared: "3osby74f5W5rYwETGFUetpuHxfkS",
+                                         fallback: "Book.vol00+01.par2") == "Book.vol00+01.par2")
+    }
+
+    @Test func headerNameStillUsedWhenNeitherHasAnExtension() {
+        #expect(FileAssembler.betterName(declared: "3osby74f5W5rY", fallback: "S") == "3osby74f5W5rY")
+        #expect(FileAssembler.betterName(declared: nil, fallback: "only-option.bin") == "only-option.bin")
+    }
+}
