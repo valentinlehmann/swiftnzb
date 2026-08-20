@@ -24,8 +24,12 @@ struct NZBFileSummary: Codable, Identifiable, Hashable, Sendable {
         totalBytes > 0 ? min(1, Double(downloadedBytes) / Double(totalBytes)) : 0
     }
 
+    /// Payload, one volume of an archive, or PAR2 recovery data — drives how the detail view
+    /// groups files so the real product isn't buried among volumes and parity.
+    var kind: FileKind { FileKind.of(filename: filename) }
+
     /// True for the PAR2 recovery files (`.par2`) — used to drive verification UI.
-    var isPar2: Bool { filename.lowercased().hasSuffix(".par2") }
+    var isPar2: Bool { kind == .parity }
 
     init(
         id: UUID = UUID(),

@@ -13,6 +13,7 @@ struct JobDetailView: View {
     @State private var isExtracting = false
     @State private var askingForPassword = false
     @State private var passwordInput = ""
+    @State private var expandedGroups: Set<FileKind> = []
 
     private var job: DownloadJob? { manager.jobs.first { $0.id == jobID } }
 
@@ -30,11 +31,7 @@ struct JobDetailView: View {
                 if let error = job.errorMessage {
                     Section { Label(error, systemImage: "exclamationmark.triangle").font(.callout) }
                 }
-                if !job.files.isEmpty {
-                    Section("Files") {
-                        ForEach(job.files) { FileProgressRow(file: $0) }
-                    }
-                }
+                fileSections(job)
             }
             .navigationTitle(job.name)
             .navigationBarTitleDisplayMode(.inline)
@@ -110,6 +107,57 @@ struct JobDetailView: View {
             Spacer()
         }
         .listRowBackground(Color.purple.opacity(0.08))
+    }
+
+    /// The file list, split by role. Content first and always expanded — it is what the user came
+    /// for; archive volumes and PAR2 recovery data collapse behind a count so a 21-file release
+    /// doesn't bury the one file that matters. An archive-only release has no content file of its
+    /// own, so point at what extraction produced instead.
+    @ViewBuilder
+    private func fileSections(_ job: DownloadJob) -> some View {
+        let byKind = Dictionary(grouping: job.files, by: \.kind)
+        let content = byKind[.content] ?? []
+
+        if !content.isEmpty {
+            Section(FileKind.content.title) {
+                ForEach(content) { FileProgressRow(file: $0) }
+            }
+        } else if job.status == .completed, !job.files.isEmpty {
+            Section(FileKind.content.title) {
+                Button { showingFiles = true } label: {
+                    Label("Show Extracted Files", systemImage: "folder")
+                }
+            }
+        }
+
+        ForEach([FileKind.archivePart, .parity], id: \.self) { kind in
+            if let files = byKind[kind], !files.isEmpty {
+                Section {
+                    DisclosureGroup(isExpanded: expansion(kind)) {
+                        ForEach(files) { FileProgressRow(file: $0) }
+                    } label: {
+                        HStack {
+                            Label(kind.title, systemImage: kind.groupSystemImage)
+                                .font(.subheadline)
+                            Spacer()
+                            // Text("\(count)") would pick up a locale thousands separator.
+                            Text(verbatim: "\(files.count)")
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func expansion(_ kind: FileKind) -> Binding<Bool> {
+        Binding(
+            get: { expandedGroups.contains(kind) },
+            set: { expanded in
+                if expanded { expandedGroups.insert(kind) } else { expandedGroups.remove(kind) }
+            }
+        )
     }
 
     private func extract(_ jobID: UUID, password: String?) async {

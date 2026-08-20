@@ -11,8 +11,8 @@ struct FileProgressRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Image(systemName: file.isPar2 ? "checkmark.shield" : "doc")
-                    .foregroundStyle(.secondary)
+                Image(systemName: FileKind.symbol(forFilename: file.filename))
+                    .foregroundStyle(file.kind == .content ? .primary : .secondary)
                 Text(file.filename)
                     .font(.subheadline)
                     .lineLimit(1)

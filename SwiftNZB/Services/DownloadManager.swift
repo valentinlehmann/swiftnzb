@@ -27,6 +27,9 @@ final class DownloadManager {
     private(set) var activeConnections: Int = 0
     private(set) var isWaitingForNetwork = false
     private(set) var isQueuePaused = false
+    /// The job that just finished. A completed job leaves the queue immediately, so without this
+    /// the download simply vanishes from that screen; the queue uses it to say where it went.
+    private(set) var recentlyCompletedJobID: UUID?
 
     private let engine = NZBDownloadEngine()
     private var streamTask: Task<Void, Never>?
@@ -365,6 +368,9 @@ final class DownloadManager {
         startNextIfNeeded()
     }
 
+    /// Dismiss the "moved to History" hint (tapped, or timed out).
+    func acknowledgeCompletion() { recentlyCompletedJobID = nil }
+
     // MARK: - Post-processing (verify → repair → extract → cleanup)
 
     private func setStep(_ jobID: UUID, _ step: PostProcessingStep?) {
@@ -482,6 +488,7 @@ final class DownloadManager {
             ServerUsageStore.shared.record(serverID: serverID, bytes: job.totalBytes)
         }
         activeJobID = nil
+        recentlyCompletedJobID = jobID
         haptic(.success)
         pruneHistory()
         save()
@@ -580,14 +587,7 @@ final class DownloadManager {
     }
 
     nonisolated private static func isArchiveFile(_ name: String) -> Bool {
-        let lower = name.lowercased()
-        if lower.hasSuffix(".rar") || lower.hasSuffix(".par2") { return true }
-        // Old-style split volumes: .r00/.r01… and .001/.002…
-        if let ext = lower.split(separator: ".").last, ext.count == 3 {
-            if ext.first == "r", ext.dropFirst().allSatisfy(\.isNumber) { return true }
-            if ext.allSatisfy(\.isNumber) { return true }
-        }
-        return false
+        FileKind.of(filename: name) != .content
     }
 
     private func networkChanged(online: Bool, expensive: Bool, constrained: Bool, interfaceChanged: Bool) {
