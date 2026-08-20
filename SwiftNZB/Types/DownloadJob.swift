@@ -26,6 +26,8 @@ struct DownloadJob: Codable, Identifiable, Hashable, Sendable {
     var assignedServerID: UUID?
     /// Relative path (under the completed folder) where output landed — for "Show in Files".
     var completedFolderRelativePath: String?
+    /// RAR password from the NZB's `<head><meta type="password">`, used when extracting.
+    var password: String?
 
     var progress: Double {
         totalBytes > 0 ? min(1, Double(downloadedBytes) / Double(totalBytes)) : 0
@@ -39,7 +41,8 @@ struct DownloadJob: Codable, Identifiable, Hashable, Sendable {
         status: JobStatus = .queued,
         files: [NZBFileSummary],
         addedAt: Date = Date(),
-        assignedServerID: UUID? = nil
+        assignedServerID: UUID? = nil,
+        password: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -53,6 +56,7 @@ struct DownloadJob: Codable, Identifiable, Hashable, Sendable {
         self.errorMessage = nil
         self.assignedServerID = assignedServerID
         self.completedFolderRelativePath = nil
+        self.password = password
     }
 
     // Migration-safe decoder.
@@ -72,5 +76,6 @@ struct DownloadJob: Codable, Identifiable, Hashable, Sendable {
         errorMessage = try c.decodeIfPresent(String.self, forKey: .errorMessage)
         assignedServerID = try c.decodeIfPresent(UUID.self, forKey: .assignedServerID)
         completedFolderRelativePath = try c.decodeIfPresent(String.self, forKey: .completedFolderRelativePath)
+        password = try c.decodeIfPresent(String.self, forKey: .password)
     }
 }

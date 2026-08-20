@@ -1,5 +1,7 @@
 name: build-ios-app
 on:
+  # Manual trigger so a fix can get a TestFlight build from its branch, before it lands on main.
+  workflow_dispatch:
   push:
     branches:
       - 'main'
