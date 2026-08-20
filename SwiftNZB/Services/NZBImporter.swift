@@ -46,7 +46,7 @@ struct NZBImporter {
 
         let fallbackName = url.deletingPathExtension().lastPathComponent
         let name = parsed.title?.isEmpty == false ? parsed.title! : fallbackName
-        return DownloadJob(name: name, files: parsed.files)
+        return DownloadJob(name: name, files: parsed.files, password: parsed.password)
     }
 }
 
@@ -54,6 +54,8 @@ struct NZBImporter {
 
 struct ParsedNZB {
     var title: String?
+    /// `<head><meta type="password">` — indexers put the RAR password here.
+    var password: String?
     var files: [NZBFileSummary]
     /// True if the XML was malformed (as opposed to well-formed but listing no files).
     var parseFailed: Bool = false
@@ -62,6 +64,7 @@ struct ParsedNZB {
 private final class NZBParser: NSObject, XMLParserDelegate {
     private var files: [NZBFileSummary] = []
     private var title: String?
+    private var password: String?
     private var parseFailed = false
 
     // Current <file>
@@ -83,7 +86,8 @@ private final class NZBParser: NSObject, XMLParserDelegate {
         // Treat a fatal XML error with nothing recovered as a malformed file (so the user gets a
         // clear "couldn't read" rather than a silent, truncated import).
         let failed = (!ok || parser.parseFailed) && parser.files.isEmpty
-        return ParsedNZB(title: parser.title, files: parser.files, parseFailed: failed)
+        return ParsedNZB(title: parser.title, password: parser.password,
+                         files: parser.files, parseFailed: failed)
     }
 
     func parser(_ parser: XMLParser, parseErrorOccurred parseError: Error) {
@@ -127,6 +131,7 @@ private final class NZBParser: NSObject, XMLParserDelegate {
             }
         case "meta":
             if currentMetaType == "title", !text.isEmpty { title = text }
+            if currentMetaType == "password", !text.isEmpty { password = text }
             currentMetaType = nil
         case "file":
             let subject = currentSubject ?? ""

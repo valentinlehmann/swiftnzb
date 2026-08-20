@@ -10,6 +10,9 @@ struct JobDetailView: View {
     @State private var manager = DownloadManager.shared
     @State private var showingFiles = false
     @State private var confirmingCancel = false
+    @State private var isExtracting = false
+    @State private var askingForPassword = false
+    @State private var passwordInput = ""
 
     private var job: DownloadJob? { manager.jobs.first { $0.id == jobID } }
 
@@ -39,6 +42,17 @@ struct JobDetailView: View {
             .sheet(isPresented: $showingFiles) {
                 NavigationStack { FileBrowserView(job: job) }
                     .presentationSizing(.form)
+            }
+            .alert("Archive Password", isPresented: $askingForPassword) {
+                TextField("Password", text: $passwordInput)
+                Button("Extract") {
+                    let password = passwordInput
+                    passwordInput = ""
+                    Task { await extract(jobID, password: password) }
+                }
+                Button("Cancel", role: .cancel) { passwordInput = "" }
+            } message: {
+                Text("This archive is password-protected. NZBs from an indexer usually carry the password; this one didn't.")
             }
             .confirmationDialog("Cancel this download?", isPresented: $confirmingCancel, titleVisibility: .visible) {
                 Button("Cancel Download", role: .destructive) { manager.cancel(jobID) }
@@ -98,6 +112,13 @@ struct JobDetailView: View {
         .listRowBackground(Color.purple.opacity(0.08))
     }
 
+    private func extract(_ jobID: UUID, password: String?) async {
+        isExtracting = true
+        let needsPassword = await manager.extractAgain(jobID, password: password)
+        isExtracting = false
+        if needsPassword { askingForPassword = true }
+    }
+
     @ViewBuilder
     private func controls(_ job: DownloadJob) -> some View {
         GlassEffectContainer(spacing: 24) {
@@ -110,6 +131,17 @@ struct JobDetailView: View {
                     CircleActionButton(systemImage: "play.fill", label: "Resume", tint: .green, prominent: true) { manager.resume(job.id) }
                 case .completed:
                     CircleActionButton(systemImage: "folder", label: "Show Files", tint: .accentColor, prominent: true) { showingFiles = true }
+                    // Extraction can fail for a fixable reason (password, damaged volume) while the
+                    // archives survive in the completed folder — retry without re-downloading.
+                    if job.files.contains(where: { $0.filename.lowercased().hasSuffix(".rar") }) {
+                        if isExtracting {
+                            ProgressView().frame(width: 44, height: 44)
+                        } else {
+                            CircleActionButton(systemImage: "shippingbox", label: "Extract Again", tint: .purple) {
+                                Task { await extract(job.id, password: nil) }
+                            }
+                        }
+                    }
                 default:
                     EmptyView()
                 }

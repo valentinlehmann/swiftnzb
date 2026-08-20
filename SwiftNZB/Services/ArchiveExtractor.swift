@@ -55,7 +55,7 @@ struct ArchiveExtractor {
                         }
                     } catch {
                         try? handle.close()
-                        return .failed("Extraction failed: \(error.localizedDescription)")
+                        return .failed("Extraction failed: \(Self.reason(error, password: password))")
                     }
                     try? handle.close()
                     if let writeError {
@@ -63,11 +63,32 @@ struct ArchiveExtractor {
                     }
                     extractedCount += 1
                 }
+            } catch UnrarError.missingPassword where password == nil {
+                // Header-encrypted set: the entry list itself is unreadable without the password,
+                // so this surfaces here rather than via `entry.encrypted`.
+                return .passwordRequired
             } catch {
-                return .failed("Extraction failed: \(error.localizedDescription)")
+                return .failed("Extraction failed: \(Self.reason(error, password: password))")
             }
         }
         return .extracted(fileCount: extractedCount)
+    }
+
+    /// UnRAR errors carry no message of their own — `localizedDescription` renders them as
+    /// "Unrar.UnrarError error 5", which tells the user nothing. Map them to real reasons.
+    private static func reason(_ error: Error, password: String?) -> String {
+        guard let error = error as? UnrarError else { return error.localizedDescription }
+        switch error {
+        case .badData:
+            return password == nil ? "the archive data is damaged or incomplete"
+                                   : "the password is wrong, or the data is damaged"
+        case .badArchive: return "the archive is damaged or a volume is missing"
+        case .unknownFormat: return "the archive format is not supported"
+        case .eopen: return "a volume of the archive set is missing"
+        case .missingPassword: return "the password is wrong"
+        case .noMemory: return "the device ran out of memory"
+        case .unknown: return "UnRAR reported an unspecified error"
+        }
     }
 
     /// Resolve an archive entry name to a URL guaranteed to live inside `root`, or nil if the entry

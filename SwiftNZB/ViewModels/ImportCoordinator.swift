@@ -39,7 +39,8 @@ final class ImportCoordinator {
 
         // Rebuild the job from only the chosen files so totals reflect the selection.
         let newJob = DownloadJob(id: job.id, name: chosenName, files: selectedFiles,
-                                 addedAt: job.addedAt, assignedServerID: serverID)
+                                 addedAt: job.addedAt, assignedServerID: serverID,
+                                 password: job.password)
         // Remember the pick as the new default so it's preselected next time.
         if let serverID { SettingsStore.shared.settings.defaultServerID = serverID }
         DownloadManager.shared.enqueue(newJob)

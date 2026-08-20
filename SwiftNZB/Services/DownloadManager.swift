@@ -420,10 +420,14 @@ final class DownloadManager {
         if settings.unrarEnabled, !ArchiveExtractor.firstVolumeArchives(in: workDir).isEmpty {
             if wasCancelled(jobID) { finishCancelledPostProcessing(jobID); return }
             setStep(jobID, .extract)
-            let outcome = await Task.detached { ArchiveExtractor.extract(in: workDir, to: destDir) }.value
+            let password = job.password
+            let outcome = await Task.detached {
+                ArchiveExtractor.extract(in: workDir, to: destDir, password: password)
+            }.value
             switch outcome {
             case .extracted(let n): didExtract = n > 0
-            case .passwordRequired: notes.append("Archive is password-protected; not extracted.")
+            case .passwordRequired:
+                notes.append("The archive needs a password and the NZB didn't include one.")
             case .failed(let reason): notes.append("Extraction failed: \(reason)")
             case .noArchives: break
             }
@@ -459,6 +463,49 @@ final class DownloadManager {
         save()
         LiveActivityService.shared.end()
         startNextIfNeeded()
+    }
+
+    /// Re-run extraction on a finished job's completed folder. Archives are only deleted when
+    /// extraction succeeded, so a job whose extraction failed for a since-fixed reason (a password,
+    /// a repaired volume) can be finished without downloading everything again. Deliberately
+    /// touches no status/step: if the app dies mid-run nothing is left stuck mid-pipeline.
+    /// Returns true when the archive needs a password the job doesn't have, so the UI can ask.
+    @discardableResult
+    func extractAgain(_ jobID: UUID, password: String? = nil) async -> Bool {
+        guard let job = jobs.first(where: { $0.id == jobID }) else { return false }
+        let settings = SettingsStore.shared.settings
+        let dir = FileLocationService.shared.completedDirectory(for: job, mode: settings.folderMode)
+        let password = password ?? job.password
+        let outcome = await Task.detached {
+            let outcome = ArchiveExtractor.extract(in: dir, to: dir, password: password)
+            if case .extracted(let count) = outcome, count > 0, settings.deleteArchivesAfterExtract {
+                Self.deleteArchives(in: dir)
+            }
+            return outcome
+        }.value
+        updateJob(jobID) { job in
+            job.errorMessage = Self.extractionNote(for: outcome)
+            if let password { job.password = password }   // remember a manually entered one
+        }
+        save()
+        return outcome == .passwordRequired
+    }
+
+    private static func extractionNote(for outcome: ArchiveExtractor.Outcome) -> String? {
+        switch outcome {
+        case .extracted(let count): return count > 0 ? nil : "The archive contained no files."
+        case .noArchives: return "No RAR archives left in the completed folder."
+        case .passwordRequired: return "The archive needs a password and the NZB didn't include one."
+        case .failed(let reason): return "Extraction failed: \(reason)"
+        }
+    }
+
+    nonisolated private static func deleteArchives(in dir: URL) {
+        guard let items = try? FileManager.default.contentsOfDirectory(
+            at: dir, includingPropertiesForKeys: nil) else { return }
+        for item in items where isArchiveFile(item.lastPathComponent) {
+            try? FileManager.default.removeItem(at: item)
+        }
     }
 
     /// Move payload to `destDir`; delete or relocate archive/par2 files per settings.
