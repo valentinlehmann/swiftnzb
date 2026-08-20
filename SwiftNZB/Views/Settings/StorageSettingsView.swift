@@ -24,6 +24,14 @@ struct StorageSettingsView: View {
                 Text("\"Subfolder per download\" keeps each download's files together; \"Single folder\" puts everything in one place. Completed downloads appear in the Files app under \"SwiftNZB\".")
             }
 
+            Section {
+                Toggle("Choose Files on Import", isOn: $settingsStore.settings.fileSelectionOnImport)
+            } header: {
+                Text("Expert")
+            } footer: {
+                Text("Shows the file list when adding an NZB so individual parts can be left out. Off by default: a post's archive volumes and PAR2 files are all needed to repair and extract it, so leaving parts out usually produces an unusable download.")
+            }
+
             Section("Device Storage") {
                 if let available {
                     LabeledContent("Available") { Text(verbatim: Format.bytes(Int(available))) }
