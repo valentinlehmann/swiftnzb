@@ -22,6 +22,7 @@ actor FileAssembler {
         let capacity: Int           // scratch size = declared total (upper bound); writes clamp to it
         var maxEnd: Int = 0         // highest byte offset written — the true decoded length so far
         var declaredSize: Int?      // authoritative decoded file size from the yEnc header, if seen
+        var declaredName: String?   // authoritative name from the yEnc header, if seen
         var alreadyComplete = false // the finished file already exists from a previous run
     }
 
@@ -75,9 +76,18 @@ actor FileAssembler {
     }
 
     /// Write a decoded segment at its authoritative offset. `declaredFileSize` is the yEnc
-    /// whole-file size when known; it pins the truncation target on finalize.
-    func write(fileID: String, data: Data, at offset: Int, declaredFileSize: Int? = nil) throws {
+    /// whole-file size when known; it pins the truncation target on finalize. `declaredName` is the
+    /// yEnc `name=`, which outranks the caller's filename: that one is parsed out of the NZB
+    /// subject, and an unquoted subject ("A. B - Title.epub (1/0)") parses to garbage ("A.").
+    func write(fileID: String, data: Data, at offset: Int,
+               declaredFileSize: Int? = nil, declaredName: String? = nil) throws {
         guard var state = states[fileID], !state.alreadyComplete else { return }
+
+        if state.declaredName == nil,
+           let declared = declaredName?.trimmingCharacters(in: .whitespacesAndNewlines), !declared.isEmpty {
+            state.declaredName = Self.sanitized(declared)
+            states[fileID] = state
+        }
 
         let start = max(0, offset)
         // Reject a segment whose offset/length runs past the declared file size (a corrupt or
@@ -121,7 +131,7 @@ actor FileAssembler {
             try? handle.close()
         }
 
-        let finalURL = uniqueFinalURL(for: state.finalName, excluding: state.partURL)
+        let finalURL = uniqueFinalURL(for: state.declaredName ?? state.finalName, excluding: state.partURL)
         if FileManager.default.fileExists(atPath: finalURL.path) {
             try? FileManager.default.removeItem(at: finalURL)
         }
