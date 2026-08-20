@@ -40,7 +40,7 @@ targets:
         # NavigationSplitView on regular width).
         TARGETED_DEVICE_FAMILY: "1,2"
         PRODUCT_NAME: SwiftNZB
-        MARKETING_VERSION: 1.0.0
+        MARKETING_VERSION: 1.0.1
         CURRENT_PROJECT_VERSION: 1
         INFOPLIST_KEY_CFBundleDisplayName: SwiftNZB
         INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.utilities"
@@ -84,7 +84,7 @@ targets:
         # Live Activities are meaningful on iPad too, so the widget is universal.
         TARGETED_DEVICE_FAMILY: "1,2"
         PRODUCT_NAME: SwiftNZBWidgets
-        MARKETING_VERSION: 1.0.0
+        MARKETING_VERSION: 1.0.1
         CURRENT_PROJECT_VERSION: 1
         INFOPLIST_FILE: SwiftNZBWidgets/Info.plist
         PRODUCT_BUNDLE_IDENTIFIER: de.valentinlehmann.swiftnzb.widgets
