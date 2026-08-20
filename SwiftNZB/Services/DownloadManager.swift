@@ -283,10 +283,18 @@ final class DownloadManager {
         case .segmentMissing:
             break  // surfaced via the per-job missing count on completion
 
-        case let .fileCompleted(fileID, url, _):
+        case let .fileCompleted(fileID, url, missingSegments):
             updateJob(jobID) { job in
                 if let i = job.files.firstIndex(where: { $0.id.uuidString == fileID }) {
-                    job.files[i].downloadedBytes = job.files[i].totalBytes
+                    // `totalBytes` is the sum of the NZB's declared *article* sizes, which include
+                    // the yEnc encoding overhead — so decoded bytes top out near 97% of it and a
+                    // finished file would look stuck. Snap it, and pin `perFileBytes` too or the
+                    // next 1 Hz tick overwrites the snap with the decoded count again. A file with
+                    // missing articles keeps its honest, lower figure instead of a fake 100%.
+                    if missingSegments == 0 {
+                        job.files[i].downloadedBytes = job.files[i].totalBytes
+                        perFileBytes[fileID] = job.files[i].totalBytes
+                    }
                     // Adopt the name the file actually landed under (from the yEnc header, which
                     // outranks the subject guess) so the UI, `isPar2` and a resumed run all agree
                     // with the disk. The engine falls back to the working directory when finalize
@@ -399,13 +407,22 @@ final class DownloadManager {
         if missingSegments > 0 { notes.append("\(missingSegments) article(s) were missing.") }
 
         // 1. PAR2 verify (+ repair).
-        let par2URLs = (try? FileManager.default.contentsOfDirectory(at: workDir, includingPropertiesForKeys: nil))?
-            .filter { $0.pathExtension.lowercased() == "par2" } ?? []
-        if settings.par2VerifyEnabled, !par2URLs.isEmpty {
+        let par2URLs = await Task.detached { Self.par2Files(in: workDir) }.value
+        if !par2URLs.isEmpty {
             if wasCancelled(jobID) { finishCancelledPostProcessing(jobID); return }
             setStep(jobID, .verify)
-            let verify = await Task.detached { PAR2Job(par2URLs: par2URLs, directory: workDir).verify() }.value
-            if !verify.isComplete {
+            // Restore the real filenames first — PAR2 is the only authority on them, and a file
+            // sitting there under an obfuscated name verifies as entirely missing. Runs even with
+            // verification off: the output names matter either way. One PAR2Job for both, since
+            // building it re-reads and re-parses every .par2 file.
+            let verifyEnabled = settings.par2VerifyEnabled
+            let (renames, verified) = await Task.detached { () -> ([(from: String, to: String)], PAR2VerifyResult?) in
+                let par2 = PAR2Job(par2URLs: par2URLs, directory: workDir)
+                let renames = par2.restoreNames()
+                return (renames, verifyEnabled ? par2.verify() : nil)
+            }.value
+            applyRenames(renames, to: jobID)
+            if let verify = verified, !verify.isComplete {
                 if settings.par2RepairEnabled, verify.isRepairable {
                     setStep(jobID, .repair)
                     let repair = await Task.detached { PAR2Job(par2URLs: par2URLs, directory: workDir).repair() }.value
@@ -512,6 +529,32 @@ final class DownloadManager {
             at: dir, includingPropertiesForKeys: nil) else { return }
         for item in items where isArchiveFile(item.lastPathComponent) {
             try? FileManager.default.removeItem(at: item)
+        }
+    }
+
+    /// PAR2 files identified by their packet magic rather than their name. An obfuscated post
+    /// delivers them under hash-like names with no extension, and an extension filter then finds
+    /// nothing at all — so verification, repair and name restoration would every one of them
+    /// silently skip, and the download would finish as a pile of unnamed files.
+    nonisolated private static func par2Files(in directory: URL) -> [URL] {
+        let magic = Data("PAR2\0PKT".utf8)
+        let items = (try? FileManager.default.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: nil)) ?? []
+        return items.filter { url in
+            guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
+            defer { try? handle.close() }
+            return (try? handle.read(upToCount: magic.count)) == magic
+        }.sorted { $0.lastPathComponent < $1.lastPathComponent }
+    }
+
+    /// Keep the job's file list in step with names PAR2 restored on disk.
+    private func applyRenames(_ renames: [(from: String, to: String)], to jobID: UUID) {
+        guard !renames.isEmpty else { return }
+        let map = Dictionary(renames.map { ($0.from, $0.to) }, uniquingKeysWith: { first, _ in first })
+        updateJob(jobID) { job in
+            for i in job.files.indices {
+                if let restored = map[job.files[i].filename] { job.files[i].filename = restored }
+            }
         }
     }
 

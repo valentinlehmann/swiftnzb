@@ -84,6 +84,58 @@ public final class PAR2Job {
         return directory.appendingPathComponent(component)
     }
 
+    // MARK: - Filename restoration
+
+    /// PAR2 file descriptions carry the real filenames plus a checksum of the first 16 KB, so they
+    /// are ground truth. The names files actually land under are not: they come from the article's
+    /// yEnc header or the NZB subject, and Usenet posts routinely obfuscate one or mangle the other
+    /// (an unquoted subject "A. B - Title.epub (1/0)" parses down to "A."). A misnamed file makes
+    /// verify report every slice of perfectly good data as missing.
+    ///
+    /// So match by content instead of by name: for each description whose file is absent, adopt the
+    /// unclaimed file whose length and first-16 KB MD5 agree with it. Returns the renames done.
+    @discardableResult
+    public func restoreNames() -> [(from: String, to: String)] {
+        guard recoverySet.isValid else { return [] }
+        let contents = (try? FileManager.default.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: nil)) ?? []
+        // Never steal a file that is itself some description's correctly-named output.
+        var claimed = Set(files.map { fileURL(for: $0.name).lastPathComponent })
+        var renames: [(from: String, to: String)] = []
+
+        for fd in files {
+            let target = fileURL(for: fd.name)
+            guard !FileManager.default.fileExists(atPath: target.path) else { continue }
+            let match = contents.first { url in
+                !Self.isPar2File(url)
+                    && !claimed.contains(url.lastPathComponent)
+                    && ((try? FileManager.default.attributesOfItem(atPath: url.path)[.size]) as? Int) == fd.length
+                    && Self.md5OfFirst16k(url) == fd.md5_16k
+            }
+            guard let match, (try? FileManager.default.moveItem(at: match, to: target)) != nil else { continue }
+            claimed.insert(target.lastPathComponent)
+            renames.append((from: match.lastPathComponent, to: target.lastPathComponent))
+        }
+        return renames
+    }
+
+    /// A recovery file itself is never a rename candidate. Checked by packet magic as well as by
+    /// extension, because obfuscated posts deliver `.par2` files under extension-less hash names.
+    private static func isPar2File(_ url: URL) -> Bool {
+        if url.pathExtension.lowercased() == "par2" { return true }
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
+        defer { try? handle.close() }
+        return (try? handle.read(upToCount: 8)) == Data("PAR2\0PKT".utf8)
+    }
+
+    /// The PAR2 "16k hash": MD5 of the first 16 KB, or of the whole file when it is smaller.
+    private static func md5OfFirst16k(_ url: URL) -> [UInt8]? {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? handle.close() }
+        guard let chunk = try? handle.read(upToCount: 16 * 1024) else { return nil }
+        return Array(Insecure.MD5.hash(data: chunk))
+    }
+
     // MARK: - Verify
 
     public func verify() -> PAR2VerifyResult {

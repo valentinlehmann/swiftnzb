@@ -131,7 +131,8 @@ actor FileAssembler {
             try? handle.close()
         }
 
-        let finalURL = uniqueFinalURL(for: state.declaredName ?? state.finalName, excluding: state.partURL)
+        let finalURL = uniqueFinalURL(for: Self.betterName(declared: state.declaredName, fallback: state.finalName),
+                                      excluding: state.partURL)
         if FileManager.default.fileExists(atPath: finalURL.path) {
             try? FileManager.default.removeItem(at: finalURL)
         }
@@ -192,6 +193,18 @@ actor FileAssembler {
             n += 1
         }
         return base
+    }
+
+    /// Pick between the yEnc header name and the subject-derived fallback. The header usually wins
+    /// — it is what the poster actually named the file — except when it has no extension and the
+    /// fallback does: obfuscated posts carry hash-like header names ("3osby74f5W5rYwETGFUetpuHxfkS")
+    /// while the indexer's subject holds the real one. An extension-less `.par2` is especially bad,
+    /// since PAR2 discovery would no longer recognize it by name.
+    static func betterName(declared: String?, fallback: String) -> String {
+        guard let declared else { return fallback }
+        let declaredHasExtension = !(declared as NSString).pathExtension.isEmpty
+        let fallbackHasExtension = !(fallback as NSString).pathExtension.isEmpty
+        return (!declaredHasExtension && fallbackHasExtension) ? fallback : declared
     }
 
     /// Reduce an untrusted name to a safe single path component inside `directory`: no separators,
