@@ -220,7 +220,8 @@ public actor NZBDownloadEngine {
                     }
 
                     try await assembler.write(fileID: item.fileID, data: segment.data,
-                                              at: segment.fileOffset, declaredFileSize: segment.header.size)
+                                              at: segment.fileOffset, declaredFileSize: segment.header.size,
+                                              declaredName: segment.header.name)
                     await markCompleted(item, bytes: segment.data.count)
                     break attemptLoop
                 } catch let error as NNTPError {

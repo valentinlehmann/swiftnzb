@@ -48,3 +48,38 @@ struct SafetyTests {
         #expect(await scheduler.requeue(unwrapped) == false)
     }
 }
+
+/// The on-disk name must come from the yEnc header, not the NZB subject: an unquoted subject
+/// ("S. T. Abby - Lana Myers.epub (1/0)") parses down to "S.", which makes PAR2 verify report
+/// every slice of a perfectly good file as missing.
+struct AssemblerNamingTests {
+    @Test func finalizePrefersTheYEncNameOverTheSubjectGuess() async throws {
+        let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("assembler-naming-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let assembler = FileAssembler(directory: dir)
+        let payload = Data("book".utf8)
+        try await assembler.prepare(fileID: "f1", filename: "S.", totalBytes: payload.count)
+        try await assembler.write(fileID: "f1", data: payload, at: 0,
+                                  declaredFileSize: payload.count, declaredName: "A Real Book.epub")
+        let url = try await assembler.finalize(fileID: "f1")
+
+        #expect(url?.lastPathComponent == "A Real Book.epub")
+        #expect(try Data(contentsOf: #require(url)) == payload)
+        #expect(!FileManager.default.fileExists(atPath: dir.appendingPathComponent("S.").path))
+    }
+
+    @Test func finalizeFallsBackToTheSubjectNameWhenTheHeaderHasNone() async throws {
+        let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("assembler-naming-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let assembler = FileAssembler(directory: dir)
+        try await assembler.prepare(fileID: "f1", filename: "fallback.bin", totalBytes: 4)
+        try await assembler.write(fileID: "f1", data: Data([1, 2, 3, 4]), at: 0, declaredFileSize: 4)
+        let url = try await assembler.finalize(fileID: "f1")
+
+        #expect(url?.lastPathComponent == "fallback.bin")
+    }
+}

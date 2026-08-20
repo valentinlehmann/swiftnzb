@@ -283,10 +283,17 @@ final class DownloadManager {
         case .segmentMissing:
             break  // surfaced via the per-job missing count on completion
 
-        case let .fileCompleted(fileID, _, _):
+        case let .fileCompleted(fileID, url, _):
             updateJob(jobID) { job in
                 if let i = job.files.firstIndex(where: { $0.id.uuidString == fileID }) {
                     job.files[i].downloadedBytes = job.files[i].totalBytes
+                    // Adopt the name the file actually landed under (from the yEnc header, which
+                    // outranks the subject guess) so the UI, `isPar2` and a resumed run all agree
+                    // with the disk. The engine falls back to the working directory when finalize
+                    // produced no URL — don't take that as a filename.
+                    if !url.hasDirectoryPath, FileManager.default.fileExists(atPath: url.path) {
+                        job.files[i].filename = url.lastPathComponent
+                    }
                 }
             }
 
