@@ -13,9 +13,11 @@ struct FileProgressRow: View {
             HStack {
                 Image(systemName: FileKind.symbol(forFilename: file.filename))
                     .foregroundStyle(file.kind == .content ? .primary : .secondary)
+                // Middle truncation so the file type stays readable on a long name.
                 Text(file.filename)
                     .font(.subheadline)
                     .lineLimit(1)
+                    .truncationMode(.middle)
                 Spacer()
                 Text(verbatim: Format.percent(file.progress))
                     .font(.caption.monospacedDigit())

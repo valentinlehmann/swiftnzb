@@ -8,7 +8,6 @@ import SwiftUI
 struct JobDetailView: View {
     let jobID: UUID
     @State private var manager = DownloadManager.shared
-    @State private var showingFiles = false
     @State private var confirmingCancel = false
     @State private var isExtracting = false
     @State private var askingForPassword = false
@@ -26,8 +25,10 @@ struct JobDetailView: View {
                 if let step = job.currentStep {
                     Section { stageBanner(step) }
                 }
-                Section { controls(job) }
-                    .listRowBackground(Color.clear)
+                if hasControls(job) {
+                    Section { controls(job) }
+                        .listRowBackground(Color.clear)
+                }
                 if let error = job.errorMessage {
                     Section { Label(error, systemImage: "exclamationmark.triangle").font(.callout) }
                 }
@@ -36,10 +37,6 @@ struct JobDetailView: View {
             .navigationTitle(job.name)
             .navigationBarTitleDisplayMode(.inline)
             .navigationSubtitle(job.status.title)
-            .sheet(isPresented: $showingFiles) {
-                NavigationStack { FileBrowserView(job: job) }
-                    .presentationSizing(.form)
-            }
             .alert("Archive Password", isPresented: $askingForPassword) {
                 TextField("Password", text: $passwordInput)
                 Button("Extract") {
@@ -109,27 +106,81 @@ struct JobDetailView: View {
         .listRowBackground(Color.purple.opacity(0.08))
     }
 
-    /// The file list, split by role. Content first and always expanded — it is what the user came
-    /// for; archive volumes and PAR2 recovery data collapse behind a count so a 21-file release
-    /// doesn't bury the one file that matters. An archive-only release has no content file of its
-    /// own, so point at what extraction produced instead.
+    /// The file list, split by role: content first and prominent, archive volumes and PAR2 data
+    /// collapsed behind a count so a 22-file release doesn't bury the one file that matters.
+    ///
+    /// A finished job lists what is actually on disk — the extracted video is the product, and it
+    /// is not an NZB entry at all, so `job.files` can't show it. While the job runs there is
+    /// nothing on disk yet worth showing, so those rows track per-file progress instead.
     @ViewBuilder
     private func fileSections(_ job: DownloadJob) -> some View {
-        let byKind = Dictionary(grouping: job.files, by: \.kind)
-        let content = byKind[.content] ?? []
+        if job.status == .completed {
+            outputSections(in: outputFolder(job))
+        } else {
+            progressSections(job)
+        }
+    }
 
-        if !content.isEmpty {
+    @ViewBuilder
+    private func outputSections(in folder: URL) -> some View {
+        let files = contents(of: folder)
+        if files.isEmpty {
             Section(FileKind.content.title) {
-                ForEach(content) { FileProgressRow(file: $0) }
+                Label("The output folder is empty.", systemImage: "folder")
+                    .foregroundStyle(.secondary)
             }
-        } else if job.status == .completed, !job.files.isEmpty {
-            Section(FileKind.content.title) {
-                Button { showingFiles = true } label: {
-                    Label("Show Extracted Files", systemImage: "folder")
+        } else {
+            let byKind = Dictionary(grouping: files) { FileKind.of(filename: $0.lastPathComponent) }
+            if let content = byKind[.content], !content.isEmpty {
+                Section(FileKind.content.title) {
+                    ForEach(content, id: \.self) { outputRow($0) }
+                }
+            }
+            ForEach([FileKind.archivePart, .parity], id: \.self) { kind in
+                if let group = byKind[kind], !group.isEmpty {
+                    Section {
+                        DisclosureGroup(isExpanded: expansion(kind)) {
+                            ForEach(group, id: \.self) { outputRow($0) }
+                        } label: {
+                            FileKindGroupLabel(kind: kind, count: group.count)
+                        }
+                    }
                 }
             }
         }
+    }
 
+    /// One output file: tapping it shares/exports the file itself.
+    private func outputRow(_ url: URL) -> some View {
+        let kind = FileKind.of(filename: url.lastPathComponent)
+        return ShareLink(item: url) {
+            HStack {
+                Image(systemName: FileKind.symbol(forFilename: url.lastPathComponent))
+                    .foregroundStyle(kind == .content ? .primary : .secondary)
+                    .frame(width: 28)
+                VStack(alignment: .leading, spacing: 2) {
+                    // Middle truncation so the file type stays readable on a long name.
+                    Text(url.lastPathComponent)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Text(verbatim: Format.bytes(fileSize(url)))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "square.and.arrow.up").foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func progressSections(_ job: DownloadJob) -> some View {
+        let byKind = Dictionary(grouping: job.files, by: \.kind)
+        if let content = byKind[.content], !content.isEmpty {
+            Section(FileKind.content.title) {
+                ForEach(content) { FileProgressRow(file: $0) }
+            }
+        }
         ForEach([FileKind.archivePart, .parity], id: \.self) { kind in
             if let files = byKind[kind], !files.isEmpty {
                 Section {
@@ -141,6 +192,39 @@ struct JobDetailView: View {
                 }
             }
         }
+    }
+
+    /// Where a finished job's files live (the recorded path, else the current layout preference).
+    private func outputFolder(_ job: DownloadJob) -> URL {
+        if let relative = job.completedFolderRelativePath {
+            return FileLocationService.shared.completeFolder.appendingPathComponent(relative, isDirectory: true)
+        }
+        return FileLocationService.shared.completedDirectory(
+            for: job, mode: SettingsStore.shared.settings.folderMode)
+    }
+
+    private func contents(of folder: URL) -> [URL] {
+        (try? FileManager.default.contentsOfDirectory(
+            at: folder, includingPropertiesForKeys: [.fileSizeKey], options: [.skipsHiddenFiles]))?
+            .sorted { $0.lastPathComponent < $1.lastPathComponent } ?? []
+    }
+
+    private func fileSize(_ url: URL) -> Int {
+        (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+    }
+
+    /// Whether `controls` renders any button at all — a finished download with nothing to retry has
+    /// none, and an empty glass row reads as a glitch.
+    private func hasControls(_ job: DownloadJob) -> Bool {
+        switch job.status {
+        case .downloading, .queued, .paused, .failed: return true
+        case .completed: return canExtractAgain(job)
+        default: return !job.status.isTerminal
+        }
+    }
+
+    private func canExtractAgain(_ job: DownloadJob) -> Bool {
+        job.files.contains { $0.kind == .archivePart }
     }
 
     private func expansion(_ kind: FileKind) -> Binding<Bool> {
@@ -170,10 +254,9 @@ struct JobDetailView: View {
                 case .paused, .failed:
                     CircleActionButton(systemImage: "play.fill", label: "Resume", tint: .green, prominent: true) { manager.resume(job.id) }
                 case .completed:
-                    CircleActionButton(systemImage: "folder", label: "Show Files", tint: .accentColor, prominent: true) { showingFiles = true }
                     // Extraction can fail for a fixable reason (password, damaged volume) while the
                     // archives survive in the completed folder — retry without re-downloading.
-                    if job.files.contains(where: { $0.filename.lowercased().hasSuffix(".rar") }) {
+                    if canExtractAgain(job) {
                         if isExtracting {
                             ProgressView().frame(width: 44, height: 44)
                         } else {
