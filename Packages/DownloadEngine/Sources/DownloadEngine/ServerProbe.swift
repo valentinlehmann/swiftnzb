@@ -19,11 +19,11 @@ public enum ServerProbe {
         } catch let error as NNTPError {
             await connection.close()
             switch error {
-            case .authenticationFailed: return "Authentication failed — check your username and password."
-            case .badGreeting: return "The server responded unexpectedly."
-            case .connectionFailed(let detail): return "Could not connect: \(detail)"
+            case .authenticationFailed: return "The server rejected the login. Check the username and password."
+            case .badGreeting: return "The server answered with something that isn't NNTP."
+            case .connectionFailed(let detail): return "Couldn't connect: \(detail)"
             case .timeout: return "The connection timed out."
-            default: return "Connection failed (\(error))."
+            default: return "The connection failed (\(error))."
             }
         } catch {
             await connection.close()

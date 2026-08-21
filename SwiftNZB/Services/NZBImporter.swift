@@ -13,8 +13,8 @@ enum NZBImportError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .unreadable: return "The NZB file could not be read."
-        case .empty: return "The NZB file contains no downloadable files."
+        case .unreadable: return "SwiftNZB couldn't read that NZB file."
+        case .empty: return "That NZB lists no files to download."
         }
     }
 }

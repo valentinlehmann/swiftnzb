@@ -43,7 +43,7 @@ struct ArchiveExtractor {
                         at: outURL.deletingLastPathComponent(), withIntermediateDirectories: true)
                     FileManager.default.createFile(atPath: outURL.path, contents: nil)
                     guard let handle = try? FileHandle(forWritingTo: outURL) else {
-                        return .failed("Could not write \(entry.fileName)")
+                        return .failed("Couldn't write \(entry.fileName)")
                     }
                     // Surface a write failure (e.g. disk full) instead of silently producing a
                     // truncated file that the caller then treats as a successful extraction.
@@ -59,7 +59,7 @@ struct ArchiveExtractor {
                     }
                     try? handle.close()
                     if let writeError {
-                        return .failed("Could not write \(entry.fileName): \(writeError.localizedDescription)")
+                        return .failed("Couldn't write \(entry.fileName): \(writeError.localizedDescription)")
                     }
                     extractedCount += 1
                 }
@@ -87,7 +87,7 @@ struct ArchiveExtractor {
         case .eopen: return "a volume of the archive set is missing"
         case .missingPassword: return "the password is wrong"
         case .noMemory: return "the device ran out of memory"
-        case .unknown: return "UnRAR reported an unspecified error"
+        case .unknown: return "UnRAR failed without saying why"
         }
     }
 

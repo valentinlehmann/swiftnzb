@@ -63,7 +63,7 @@ struct HistoryView: View {
             Button("Clear All", role: .destructive) { manager.clearHistory() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This removes every completed and cancelled download from the list. Your downloaded files in the Files app are not affected.")
+            Text("This clears the list. The downloaded files stay where they are in the Files app.")
         }
     }
 

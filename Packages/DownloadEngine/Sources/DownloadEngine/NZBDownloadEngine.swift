@@ -109,7 +109,7 @@ public actor NZBDownloadEngine {
                 // would zero-clobber good output).
                 if alreadyComplete { finalizedFiles.insert(file.id) }
             } catch {
-                emit(.finished(.failed(reason: "Could not create scratch file: \(error.localizedDescription)")))
+                emit(.finished(.failed(reason: "Couldn't create the scratch file: \(error.localizedDescription)")))
                 return
             }
         }
@@ -158,7 +158,7 @@ public actor NZBDownloadEngine {
         } else if Task.isCancelled {
             emit(.finished(.cancelled))
         } else if !transientlyFailed.isEmpty {
-            emit(.finished(.failed(reason: "The connection dropped before the download finished. It will resume when you retry.")))
+            emit(.finished(.failed(reason: "The connection dropped before the download finished. Retry to pick up where it left off.")))
         } else {
             emit(.finished(.completed(downloadedBytes: downloadedBytes, missingSegments: missing.count)))
         }
