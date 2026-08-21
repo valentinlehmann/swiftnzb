@@ -57,7 +57,7 @@ struct QueueView: View {
             }
             Button("Keep Downloading", role: .cancel) { cancelCandidate = nil }
         } message: {
-            Text("The partially downloaded files will be deleted.")
+            Text("SwiftNZB deletes the partly downloaded files.")
         }
     }
 
@@ -99,7 +99,7 @@ struct QueueView: View {
                         .foregroundStyle(.green)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(job.name).font(.subheadline.weight(.medium)).lineLimit(1)
-                        Text("Finished — moved to Downloads").font(.caption).foregroundStyle(.secondary)
+                        Text("Finished, now in Downloads").font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 8)
                     Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)

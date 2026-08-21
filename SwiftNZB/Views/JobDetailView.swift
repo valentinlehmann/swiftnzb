@@ -46,13 +46,13 @@ struct JobDetailView: View {
                 }
                 Button("Cancel", role: .cancel) { passwordInput = "" }
             } message: {
-                Text("This archive is password-protected. NZBs from an indexer usually carry the password; this one didn't.")
+                Text("This archive needs a password. Indexer NZBs usually carry one, this one didn't.")
             }
             .confirmationDialog("Cancel this download?", isPresented: $confirmingCancel, titleVisibility: .visible) {
                 Button("Cancel Download", role: .destructive) { manager.cancel(jobID) }
                 Button("Keep Downloading", role: .cancel) {}
             } message: {
-                Text("The partially downloaded files will be deleted.")
+                Text("SwiftNZB deletes the partly downloaded files.")
             }
         } else {
             ContentUnavailableView("Download Removed", systemImage: "tray")

@@ -25,7 +25,7 @@ struct PostProcessingSettingsView: View {
             Section {
                 Toggle("Verify & Repair with PAR2", isOn: par2Enabled)
             } footer: {
-                Text("PAR2 recovery files detect damaged or missing pieces after a download and rebuild them, so an incomplete download can still finish intact.")
+                Text("PAR2 recovery files find damaged and missing pieces and rebuild them, so a download with holes in it can still finish intact.")
             }
 
             Section {
@@ -33,7 +33,7 @@ struct PostProcessingSettingsView: View {
                 Toggle("Delete Archives After Extraction", isOn: $settingsStore.settings.deleteArchivesAfterExtract)
                     .disabled(!settingsStore.settings.unrarEnabled)
             } footer: {
-                Text("Large files are often split into multi-part RAR archives for transfer. When enabled, SwiftNZB unpacks them into the completed folder and (optionally) removes the now-redundant archive parts to save space.")
+                Text("Posts usually arrive as a set of RAR volumes. SwiftNZB unpacks them into the completed folder, and deletes the volumes afterwards if you let it.")
             }
         }
         .navigationTitle("Post-Processing")

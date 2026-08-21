@@ -13,11 +13,11 @@ struct BackgroundSettingsView: View {
             Section {
                 Toggle("Only When Charging", isOn: $settingsStore.settings.requireExternalPowerForBackground)
             } footer: {
-                Text("Limits opportunistic background resume to when the device is plugged in, to save battery.")
+                Text("Background resume only runs while the device is charging. Turn this off to let it run on battery too.")
             }
 
             Section {
-                Text("iOS can't keep Usenet downloads running unattended in the background — large downloads need the app open. When you leave the app, SwiftNZB finishes the current piece, saves its place, and resumes automatically next time it gets a moment to run or when you reopen it.")
+                Text("iOS won't keep a Usenet connection alive in the background, so large downloads need the app open. When you leave, SwiftNZB finishes the article it is on and saves its place. It resumes when iOS next gives it time to run, or as soon as you reopen the app.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             } header: {

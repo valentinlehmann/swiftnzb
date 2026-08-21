@@ -17,7 +17,7 @@ struct ConnectionsSettingsView: View {
                     }
                 }
             } footer: {
-                Text("How many article downloads run in parallel. More connections download faster, but never exceed the limit your Usenet plan allows or the provider may refuse them.")
+                Text("How many articles download at once. More is faster, up to the limit your Usenet plan allows. Past that, the provider starts refusing connections.")
             }
         }
         .navigationTitle("Connections")

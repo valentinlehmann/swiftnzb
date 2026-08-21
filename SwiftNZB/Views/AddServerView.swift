@@ -76,7 +76,7 @@ struct AddServerView: View {
                 if case let .failure(message) = viewModel.testState {
                     Text(message).font(.caption).foregroundStyle(.red)
                 } else if case .success = viewModel.testState {
-                    Text("Connected successfully.").font(.caption).foregroundStyle(.green)
+                    Text("The server accepted the login.").font(.caption).foregroundStyle(.green)
                 } else if !viewModel.isEditing {
                     Text("Saving checks the connection first.")
                         .font(.caption).foregroundStyle(.secondary)

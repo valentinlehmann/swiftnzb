@@ -40,7 +40,7 @@ private struct OnboardingView: View {
             ContentUnavailableView {
                 Label("Welcome to SwiftNZB", systemImage: "arrow.down.circle")
             } description: {
-                Text("Add your Usenet server to start downloading NZB files.")
+                Text("Add your Usenet server, then import an NZB to start downloading.")
             } actions: {
                 Button("Add Server") { showingAddServer = true }
                     .buttonStyle(.glassProminent)

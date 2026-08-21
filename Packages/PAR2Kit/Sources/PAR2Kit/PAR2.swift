@@ -225,7 +225,7 @@ public final class PAR2Job {
         var rhs: [[UInt16]] = chosen.map { wordsFromBytes($0.data, count: wordsPerBlock) }
         for gi in presence.indices where presence[gi] {
             guard let blockWords = readBlockWords(globalIndex: gi, wordsPerBlock: wordsPerBlock) else {
-                return .failed(reason: "Could not read an intact block during repair.")
+                return .failed(reason: "Couldn't read a good block while repairing.")
             }
             let lb = baseLogs[gi]
             for r in 0..<m {
@@ -245,20 +245,20 @@ public final class PAR2Job {
         }
 
         guard ReedSolomon.solve(matrix: &matrix, rhs: &rhs, m: m) else {
-            return .failed(reason: "Reed-Solomon matrix was singular.")
+            return .failed(reason: "The recovery blocks don't cover these files.")
         }
 
         // Write recovered blocks back to disk.
         for j in 0..<m {
             if !writeBlock(globalIndex: missingIndices[j], words: rhs[j]) {
-                return .failed(reason: "Could not write a recovered block.")
+                return .failed(reason: "Couldn't write a rebuilt block.")
             }
         }
 
         // Safety net: a correct repair must make every file's MD5 match.
         let after = verify()
         return after.isComplete ? .repaired(blocks: m)
-                                : .failed(reason: "Post-repair verification failed.")
+                                : .failed(reason: "The rebuilt files still don't match their checksums.")
     }
 
     // MARK: - Block I/O

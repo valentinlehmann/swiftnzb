@@ -21,7 +21,7 @@ struct StorageSettingsView: View {
             } header: {
                 Text("Completed Downloads")
             } footer: {
-                Text("\"Subfolder per download\" keeps each download's files together; \"Single folder\" puts everything in one place. Completed downloads appear in the Files app under \"SwiftNZB\".")
+                Text("\"Subfolder per download\" keeps each download's files together. \"Single folder\" puts everything in one place. Either way, the files show up in the Files app under \"SwiftNZB\".")
             }
 
             Section {
@@ -29,7 +29,7 @@ struct StorageSettingsView: View {
             } header: {
                 Text("Expert")
             } footer: {
-                Text("Shows the file list when adding an NZB so individual parts can be left out. Off by default: a post's archive volumes and PAR2 files are all needed to repair and extract it, so leaving parts out usually produces an unusable download.")
+                Text("Shows the file list when you add an NZB, so you can leave parts out. Repair and extraction need every volume and PAR2 file a post carries, so a partial pick usually produces a download you can't open.")
             }
 
             Section("Device Storage") {

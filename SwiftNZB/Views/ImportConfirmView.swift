@@ -40,7 +40,7 @@ struct ImportConfirmView: View {
                 } header: {
                     Text("Name")
                 } footer: {
-                    Text("Used as the download's name and its folder in the Files app.")
+                    Text("Names the download and its folder in the Files app.")
                 }
 
                 Section {
@@ -52,11 +52,11 @@ struct ImportConfirmView: View {
                                 .foregroundStyle((freeAfterBytes ?? 0) < lowSpaceThreshold ? Color.red : Color.secondary)
                         }
                         if (freeAfterBytes ?? 0) < 0 {
-                            Label("This download is larger than the free space available.",
+                            Label("This download is bigger than the space left on the device.",
                                   systemImage: "exclamationmark.triangle.fill")
                                 .font(.caption).foregroundStyle(.red)
                         } else if (freeAfterBytes ?? 0) < lowSpaceThreshold {
-                            Label("Low on space — extraction needs extra room, so leave some headroom.",
+                            Label("Low on space. Extraction needs room beyond the download itself.",
                                   systemImage: "exclamationmark.triangle")
                                 .font(.caption).foregroundStyle(.orange)
                         }
@@ -64,7 +64,7 @@ struct ImportConfirmView: View {
                 } header: {
                     Text("Storage")
                 } footer: {
-                    Text("Extraction temporarily needs extra space beyond the download size.")
+                    Text("Extraction needs extra room on top of the download size.")
                 }
 
                 Section("Server") {

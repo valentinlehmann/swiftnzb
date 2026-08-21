@@ -203,7 +203,7 @@ final class DownloadManager {
         guard let server = server(for: next) else {
             updateJob(next.id) {
                 $0.status = .failed
-                $0.errorMessage = "No Usenet server configured. Add one in Settings."
+                $0.errorMessage = "No Usenet server yet. Add one in Settings."
             }
             save()
             return
@@ -410,7 +410,10 @@ final class DownloadManager {
         let settings = SettingsStore.shared.settings
 
         var notes: [String] = []
-        if missingSegments > 0 { notes.append("\(missingSegments) article(s) were missing.") }
+        if missingSegments > 0 {
+            notes.append(missingSegments == 1 ? "1 article was missing."
+                                             : "\(missingSegments) articles were missing.")
+        }
 
         // 1. PAR2 verify (+ repair).
         let par2URLs = await Task.detached { Self.par2Files(in: workDir) }.value
@@ -433,14 +436,15 @@ final class DownloadManager {
                     setStep(jobID, .repair)
                     let repair = await Task.detached { PAR2Job(par2URLs: par2URLs, directory: workDir).repair() }.value
                     switch repair {
-                    case .repaired(let n): notes.append("Repaired \(n) block(s) with PAR2.")
+                    case .repaired(let n):
+                        notes.append(n == 1 ? "PAR2 rebuilt 1 block." : "PAR2 rebuilt \(n) blocks.")
                     case .insufficientRecoveryData(let miss, let avail):
-                        notes.append("Not enough PAR2 data to repair (need \(miss), have \(avail)).")
+                        notes.append("Repair needs \(miss) recovery blocks and the post came with \(avail).")
                     case .failed(let reason): notes.append("PAR2 repair failed: \(reason)")
                     case .notNeeded: break
                     }
                 } else if !verify.isRepairable {
-                    notes.append("Files are damaged and there isn't enough PAR2 data to repair.")
+                    notes.append("Some files are damaged and the post didn't include enough PAR2 data to rebuild them.")
                 }
             }
         }
@@ -457,7 +461,7 @@ final class DownloadManager {
             switch outcome {
             case .extracted(let n): didExtract = n > 0
             case .passwordRequired:
-                notes.append("The archive needs a password and the NZB didn't include one.")
+                notes.append("This archive needs a password and the NZB didn't include one.")
             case .failed(let reason): notes.append("Extraction failed: \(reason)")
             case .noArchives: break
             }
@@ -526,7 +530,7 @@ final class DownloadManager {
         switch outcome {
         case .extracted(let count): return count > 0 ? nil : "The archive contained no files."
         case .noArchives: return "No RAR archives left in the completed folder."
-        case .passwordRequired: return "The archive needs a password and the NZB didn't include one."
+        case .passwordRequired: return "This archive needs a password and the NZB didn't include one."
         case .failed(let reason): return "Extraction failed: \(reason)"
         }
     }

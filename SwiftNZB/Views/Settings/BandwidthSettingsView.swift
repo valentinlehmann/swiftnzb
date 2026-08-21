@@ -40,13 +40,13 @@ struct BandwidthSettingsView: View {
             } header: {
                 Text("Speed Limit")
             } footer: {
-                Text("Caps the total download speed across all connections — handy on shared or metered links. Off means download as fast as the connections allow.")
+                Text("Caps the combined speed of every connection. Off means SwiftNZB downloads as fast as the server allows.")
             }
 
             Section {
                 Toggle("Pause on Cellular", isOn: $settingsStore.settings.pauseOnCellular)
             } footer: {
-                Text("When on, downloads pause on cellular or Low Data Mode connections and resume automatically on Wi-Fi.")
+                Text("Downloads pause on cellular and in Low Data Mode, then resume once you are back on Wi-Fi.")
             }
         }
         .navigationTitle("Bandwidth")
