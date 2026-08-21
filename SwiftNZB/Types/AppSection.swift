@@ -17,7 +17,8 @@ enum AppSection: String, CaseIterable, Identifiable, Sendable {
     var title: LocalizedStringKey {
         switch self {
         case .queue: return "Queue"
-        case .history: return "History"
+        // The case stays `history` — internally it is the job history — but users see "Downloads".
+        case .history: return "Downloads"
         case .settings: return "Settings"
         }
     }

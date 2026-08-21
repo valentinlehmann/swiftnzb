@@ -16,12 +16,20 @@ struct RootTabView: View {
         TabView(selection: $router.section) {
             ForEach(AppSection.allCases) { section in
                 Tab(section.title, systemImage: section.systemImage, value: section) {
-                    NavigationStack { SectionDestinationView(section: section) }
+                    NavigationStack(path: path(section)) { SectionDestinationView(section: section) }
                 }
             }
         }
         .tabViewStyle(.sidebarAdaptable)
         .tabBarMinimizeBehavior(.onScrollDown)
+    }
+
+    /// Each tab's stack is driven by the router, so `AppRouter.show(_:in:)` can push a job.
+    private func path(_ section: AppSection) -> Binding<[UUID]> {
+        Binding(
+            get: { router.paths[section] ?? [] },
+            set: { router.paths[section] = $0 }
+        )
     }
 }
 

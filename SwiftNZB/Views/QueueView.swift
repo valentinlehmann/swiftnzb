@@ -77,7 +77,7 @@ struct QueueView: View {
         ContentUnavailableView {
             Label("No Downloads", systemImage: "tray.and.arrow.down")
         } description: {
-            Text("Import an NZB file to start downloading. Finished downloads move to History.")
+            Text("Import an NZB file to start downloading. Finished ones appear under Downloads.")
         } actions: {
             Button("Add NZB") { presentImporter() }
                 .buttonStyle(.glassProminent)
@@ -92,14 +92,14 @@ struct QueueView: View {
            let job = manager.jobs.first(where: { $0.id == id }) {
             Button {
                 manager.acknowledgeCompletion()
-                router.section = .history
+                router.show(job.id, in: .history)
             } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(job.name).font(.subheadline.weight(.medium)).lineLimit(1)
-                        Text("Finished — moved to History").font(.caption).foregroundStyle(.secondary)
+                        Text("Finished — moved to Downloads").font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 8)
                     Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
