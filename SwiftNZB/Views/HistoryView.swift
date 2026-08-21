@@ -6,13 +6,14 @@
 import SwiftUI
 
 enum HistorySort: String, CaseIterable, Identifiable {
-    case date, size, name
+    case date, size, name, files
     var id: String { rawValue }
     var label: LocalizedStringKey {
         switch self {
         case .date: return "Date"
         case .size: return "Size"
         case .name: return "Name"
+        case .files: return "Files"
         }
     }
     /// Direction used when this option is first picked (matches what users expect by default).
@@ -21,6 +22,7 @@ enum HistorySort: String, CaseIterable, Identifiable {
         case .date: return false   // newest first
         case .size: return false   // largest first
         case .name: return true    // A–Z
+        case .files: return false  // most files first
         }
     }
     /// Short description of the current direction, shown under the selected option.
@@ -29,6 +31,7 @@ enum HistorySort: String, CaseIterable, Identifiable {
         case .date: return ascending ? "Oldest first" : "Newest first"
         case .size: return ascending ? "Smallest first" : "Largest first"
         case .name: return ascending ? "A–Z" : "Z–A"
+        case .files: return ascending ? "Fewest files first" : "Most files first"
         }
     }
 }
@@ -46,17 +49,17 @@ struct HistoryView: View {
     var body: some View {
         Group {
             if manager.historyJobs.isEmpty {
-                EmptyStateView(title: "No History", systemImage: "checkmark.circle",
+                EmptyStateView(title: "No Downloads", systemImage: "checkmark.circle",
                                message: "Completed and cancelled downloads appear here.")
             } else {
                 listContent
             }
         }
-        .navigationTitle("History")
+        .navigationTitle("Downloads")
         .navigationDestination(for: UUID.self) { JobDetailView(jobID: $0) }
         .toolbar { toolbar }
         .onChange(of: editing) { _, isEditing in if !isEditing { selection.removeAll() } }
-        .confirmationDialog("Clear all history?", isPresented: $confirmingClearAll, titleVisibility: .visible) {
+        .confirmationDialog("Clear all entries?", isPresented: $confirmingClearAll, titleVisibility: .visible) {
             Button("Clear All", role: .destructive) { manager.clearHistory() }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -91,19 +94,34 @@ struct HistoryView: View {
     }
 
     private func row(_ job: DownloadJob) -> some View {
-        HStack {
-            Image(systemName: job.status.systemImage)
-                .foregroundStyle(job.status.tint)
+        let icon = rowIcon(job)
+        return HStack {
+            Image(systemName: icon.name)
+                .foregroundStyle(icon.tint)
                 .frame(width: 28)   // keep the title column aligned across glyph widths
             VStack(alignment: .leading, spacing: 2) {
                 Text(job.name).lineLimit(1)
-                Text(verbatim: "\(Format.bytes(job.totalBytes)) · \(dateText(job))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Text("^[\(job.payloadFiles.count) file](inflect: true)")
+                    Text(verbatim: "· \(Format.bytes(job.totalBytes)) · \(dateText(job))")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
             Spacer()
         }
         .contentShape(Rectangle())
+    }
+
+    /// A finished row shows *what it holds* — film, book, archive — rather than a green checkmark:
+    /// in edit mode that checkmark sat right next to the selection checkbox, which read as two
+    /// competing controls, and on a screen called "Downloads" "it finished" is the default anyway.
+    /// A cancelled or failed row keeps its status glyph, which is exactly when status matters.
+    private func rowIcon(_ job: DownloadJob) -> (name: String, tint: Color) {
+        guard job.status == .completed else { return (job.status.systemImage, job.status.tint) }
+        let payload = job.payloadFiles
+        let representative = payload.first { $0.kind == .content } ?? payload.first
+        return (FileKind.symbol(forFilename: representative?.filename ?? ""), Color.secondary)
     }
 
     private func selectionMark(_ id: UUID) -> some View {
@@ -192,6 +210,8 @@ struct HistoryView: View {
             ascendingOrder = list.sorted { $0.totalBytes < $1.totalBytes }
         case .name:
             ascendingOrder = list.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        case .files:
+            ascendingOrder = list.sorted { $0.payloadFiles.count < $1.payloadFiles.count }
         }
         return ascending ? ascendingOrder : ascendingOrder.reversed()
     }

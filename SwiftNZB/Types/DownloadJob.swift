@@ -29,6 +29,9 @@ struct DownloadJob: Codable, Identifiable, Hashable, Sendable {
     /// RAR password from the NZB's `<head><meta type="password">`, used when extracting.
     var password: String?
 
+    /// The download's actual payload — everything except PAR2 recovery data.
+    var payloadFiles: [NZBFileSummary] { files.filter { $0.kind != .parity } }
+
     var progress: Double {
         totalBytes > 0 ? min(1, Double(downloadedBytes) / Double(totalBytes)) : 0
     }
