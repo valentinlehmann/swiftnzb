@@ -20,8 +20,7 @@ struct JobDetailView: View {
         if let job {
             List {
                 Section { header(job) }
-                Section { statTiles(job) }
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                statRows(job)
                 if let step = job.currentStep {
                     Section { stageBanner(step) }
                 }
@@ -77,23 +76,42 @@ struct JobDetailView: View {
         .padding(.vertical, 4)
     }
 
+    /// Plain rows in their own section instead of a tile grid: a `LabeledContent` list is what the
+    /// rest of iOS uses for this, and it lets each stat show up only when it means something.
+    /// A finished download has no speed and no ETA, so those rows are gone rather than showing a
+    /// dash, and its downloaded byte count equals its size, so only the size is worth a row.
     @ViewBuilder
-    private func statTiles(_ job: DownloadJob) -> some View {
-        let downloading = job.status == .downloading && job.id == manager.activeJobID
+    private func statRows(_ job: DownloadJob) -> some View {
+        let live = job.status == .downloading && job.id == manager.activeJobID
         let remaining = max(0, job.totalBytes - job.downloadedBytes)
-        VStack(spacing: 10) {
-            HStack(spacing: 10) {
-                StatTile("Downloaded", Format.bytes(job.downloadedBytes), systemImage: "arrow.down.circle")
-                StatTile("Total", Format.bytes(job.totalBytes), systemImage: "doc")
-            }
-            HStack(spacing: 10) {
-                StatTile("Speed", downloading ? Format.speed(manager.aggregateBytesPerSecond) : "—",
-                         systemImage: "speedometer", tint: downloading ? .accentColor : .secondary)
-                StatTile("ETA",
-                         downloading ? (Format.eta(remainingBytes: remaining, bytesPerSecond: manager.aggregateBytesPerSecond) ?? "—") : "—",
-                         systemImage: "clock")
+        Section("Details") {
+            if job.status == .completed {
+                LabeledContent("Size") { statValue(Format.bytes(job.totalBytes)) }
+                if let completedAt = job.completedAt {
+                    LabeledContent("Finished") {
+                        Text(completedAt.formatted(date: .abbreviated, time: .shortened))
+                    }
+                }
+            } else {
+                LabeledContent("Downloaded") { statValue(Format.bytes(job.downloadedBytes)) }
+                LabeledContent("Total") { statValue(Format.bytes(job.totalBytes)) }
+                if live {
+                    LabeledContent("Speed") { statValue(Format.speed(manager.aggregateBytesPerSecond)) }
+                    if let eta = Format.eta(remainingBytes: remaining,
+                                            bytesPerSecond: manager.aggregateBytesPerSecond) {
+                        LabeledContent("ETA") { statValue(eta) }
+                    }
+                }
             }
         }
+    }
+
+    /// Byte counts and speeds use `Text(verbatim:)` so they keep their own formatting.
+    private func statValue(_ value: String) -> some View {
+        Text(verbatim: value)
+            .monospacedDigit()
+            .contentTransition(.numericText())
+            .animation(.default, value: value)
     }
 
     @ViewBuilder
