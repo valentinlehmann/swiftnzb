@@ -87,7 +87,7 @@ struct JobDetailView: View {
         let remaining = max(0, job.totalBytes - job.downloadedBytes)
         Section("Details") {
             if job.status == .completed {
-                LabeledContent("Size") { statValue(Format.bytes(job.totalBytes)) }
+                StatRow("Size", Format.bytes(job.totalBytes))
                 if let completedAt = job.completedAt {
                     LabeledContent("Finished") {
                         Text(completedAt.formatted(date: .abbreviated, time: .shortened))
@@ -97,25 +97,17 @@ struct JobDetailView: View {
                     Label("Show in Files", systemImage: "folder")
                 }
             } else {
-                LabeledContent("Downloaded") { statValue(Format.bytes(job.downloadedBytes)) }
-                LabeledContent("Total") { statValue(Format.bytes(job.totalBytes)) }
+                StatRow("Downloaded", Format.bytes(job.downloadedBytes))
+                StatRow("Total", Format.bytes(job.totalBytes))
                 if live {
-                    LabeledContent("Speed") { statValue(Format.speed(manager.aggregateBytesPerSecond)) }
+                    StatRow("Speed", Format.speed(manager.aggregateBytesPerSecond))
                     if let eta = Format.eta(remainingBytes: remaining,
                                             bytesPerSecond: manager.aggregateBytesPerSecond) {
-                        LabeledContent("ETA") { statValue(eta) }
+                        StatRow("ETA", eta)
                     }
                 }
             }
         }
-    }
-
-    /// Byte counts and speeds use `Text(verbatim:)` so they keep their own formatting.
-    private func statValue(_ value: String) -> some View {
-        Text(verbatim: value)
-            .monospacedDigit()
-            .contentTransition(.numericText())
-            .animation(.default, value: value)
     }
 
     @ViewBuilder

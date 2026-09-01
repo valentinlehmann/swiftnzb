@@ -21,8 +21,7 @@ struct AddServerView: View {
         Form {
             if let serverID = viewModel.editingServerID {
                 Section("Usage") {
-                    ServerUsageCard(serverID: serverID)
-                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    ServerUsageRows(serverID: serverID)
                 }
             }
 
