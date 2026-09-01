@@ -43,8 +43,9 @@ struct HistoryView: View {
     @State private var editing = false
     @State private var selection = Set<UUID>()
     @State private var confirmingClearAll = false
+    @State private var query = ""
 
-    private var jobs: [DownloadJob] { sorted(manager.historyJobs) }
+    private var jobs: [DownloadJob] { sorted(matching(manager.historyJobs)) }
 
     var body: some View {
         Group {
@@ -53,8 +54,14 @@ struct HistoryView: View {
                                message: "Completed and cancelled downloads appear here.")
             } else {
                 listContent
+                    .overlay {
+                        if jobs.isEmpty {
+                            ContentUnavailableView.search(text: query)
+                        }
+                    }
             }
         }
+        .searchable(text: $query, prompt: "Search downloads")
         .navigationTitle("Downloads")
         .navigationDestination(for: UUID.self) { JobDetailView(jobID: $0) }
         .toolbar { toolbar }
@@ -199,6 +206,14 @@ struct HistoryView: View {
 
     private func dateText(_ job: DownloadJob) -> String {
         (job.completedAt ?? job.addedAt).formatted(date: .abbreviated, time: .omitted)
+    }
+
+    /// Name search. The name is what the user typed at import and what the output folder is
+    /// called, so it's the only field worth matching.
+    private func matching(_ list: [DownloadJob]) -> [DownloadJob] {
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return list }
+        return list.filter { $0.name.localizedStandardContains(trimmed) }
     }
 
     private func sorted(_ list: [DownloadJob]) -> [DownloadJob] {

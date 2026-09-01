@@ -41,6 +41,12 @@ struct DownloadSettings: Codable, Equatable, Sendable {
     /// Show the per-file picker when adding an NZB. Off by default: leaving parts out breaks PAR2
     /// repair and extraction, so it only makes sense to someone who knows what a post contains.
     var fileSelectionOnImport: Bool
+    /// Hold the screen awake while a download runs. iOS suspends the NNTP sockets as soon as the
+    /// app leaves the foreground, and the auto-lock does exactly that, so without this a download
+    /// stops within seconds of the user putting the device down.
+    var keepScreenAwakeWhileDownloading: Bool
+    /// Post a notification when a download finishes or fails while the app isn't in front.
+    var notifyOnFinish: Bool
 
     static let `default` = DownloadSettings(
         maxGlobalConnections: 20,
@@ -54,7 +60,9 @@ struct DownloadSettings: Codable, Equatable, Sendable {
         requireExternalPowerForBackground: true,
         keepCompletedHistoryDays: 30,
         defaultServerID: nil,
-        fileSelectionOnImport: false
+        fileSelectionOnImport: false,
+        keepScreenAwakeWhileDownloading: true,
+        notifyOnFinish: true
     )
 
     // Migration-safe decoder so adding a preference later doesn't break stored/synced settings.
@@ -74,6 +82,9 @@ struct DownloadSettings: Codable, Equatable, Sendable {
         defaultServerID = try c.decodeIfPresent(UUID.self, forKey: .defaultServerID)
         fileSelectionOnImport = try c.decodeIfPresent(Bool.self, forKey: .fileSelectionOnImport)
             ?? d.fileSelectionOnImport
+        keepScreenAwakeWhileDownloading = try c.decodeIfPresent(
+            Bool.self, forKey: .keepScreenAwakeWhileDownloading) ?? d.keepScreenAwakeWhileDownloading
+        notifyOnFinish = try c.decodeIfPresent(Bool.self, forKey: .notifyOnFinish) ?? d.notifyOnFinish
     }
 
     init(
@@ -88,7 +99,9 @@ struct DownloadSettings: Codable, Equatable, Sendable {
         requireExternalPowerForBackground: Bool,
         keepCompletedHistoryDays: Int,
         defaultServerID: UUID? = nil,
-        fileSelectionOnImport: Bool = false
+        fileSelectionOnImport: Bool = false,
+        keepScreenAwakeWhileDownloading: Bool = true,
+        notifyOnFinish: Bool = true
     ) {
         self.maxGlobalConnections = maxGlobalConnections
         self.par2VerifyEnabled = par2VerifyEnabled
@@ -102,5 +115,7 @@ struct DownloadSettings: Codable, Equatable, Sendable {
         self.keepCompletedHistoryDays = keepCompletedHistoryDays
         self.defaultServerID = defaultServerID
         self.fileSelectionOnImport = fileSelectionOnImport
+        self.keepScreenAwakeWhileDownloading = keepScreenAwakeWhileDownloading
+        self.notifyOnFinish = notifyOnFinish
     }
 }

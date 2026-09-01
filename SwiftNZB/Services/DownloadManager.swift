@@ -22,7 +22,9 @@ final class DownloadManager {
     static let shared = DownloadManager()
 
     private(set) var jobs: [DownloadJob] = []
-    private(set) var activeJobID: UUID?
+    /// Every start/finish path routes through this, so the screen-awake flag follows it rather
+    /// than being toggled by hand in each of them.
+    private(set) var activeJobID: UUID? { didSet { refreshIdleTimer() } }
     private(set) var aggregateBytesPerSecond: Int = 0
     private(set) var activeConnections: Int = 0
     private(set) var isWaitingForNetwork = false
@@ -76,8 +78,20 @@ final class DownloadManager {
                                  constrained: constrained, interfaceChanged: interfaceChanged)
         }
         NetworkPathObserver.shared.start()
+        NotificationService.shared.requestAuthorizationIfNeeded()
         save()
         startNextIfNeeded()
+    }
+
+    /// Hold the screen awake while a job is running. iOS suspends raw sockets the moment the app
+    /// leaves the foreground, and the auto-lock does exactly that, so a download left alone would
+    /// otherwise stall about half a minute in. Called from `activeJobID`'s `didSet` and by the
+    /// settings toggle, so flipping the preference takes effect on the download already running.
+    func refreshIdleTimer() {
+        let wanted = SettingsStore.shared.settings.keepScreenAwakeWhileDownloading && activeJobID != nil
+        if UIApplication.shared.isIdleTimerDisabled != wanted {
+            UIApplication.shared.isIdleTimerDisabled = wanted
+        }
     }
 
     /// Persist resume state before the app suspends (called from the background wind-down).
@@ -158,18 +172,36 @@ final class DownloadManager {
     }
 
     func removeFromHistory(_ id: UUID) {
-        jobs.removeAll { $0.id == id && $0.status.isTerminal }
+        forget { $0.id == id }
         save()
     }
 
     func removeFromHistory(_ ids: Set<UUID>) {
-        jobs.removeAll { $0.status.isTerminal && ids.contains($0.id) }
+        forget { ids.contains($0.id) }
         save()
     }
 
     func clearHistory() {
-        jobs.removeAll { $0.status.isTerminal }
+        forget { _ in true }
         save()
+    }
+
+    /// Apply the retention preference now rather than at the next launch, so shortening it does
+    /// something visible.
+    func applyHistoryRetention() {
+        pruneHistory()
+        save()
+    }
+
+    /// Drop matching terminal jobs *and* the working directory they still own. A failed job keeps
+    /// its partial `.part` files on purpose so it can resume, so forgetting the job without them
+    /// strands those bytes: no screen can reach that folder again. Every removal path (swipe,
+    /// multi-select, Clear All, the retention prune) goes through here for that reason.
+    private func forget(where predicate: (DownloadJob) -> Bool) {
+        let doomed = Set(jobs.filter { $0.status.isTerminal && predicate($0) }.map(\.id))
+        guard !doomed.isEmpty else { return }
+        for id in doomed { FileLocationService.shared.removeWorkingDirectory(forJobID: id) }
+        jobs.removeAll { doomed.contains($0.id) }
     }
 
     /// Reorder the waiting (queued/paused, non-active) jobs. The active job and history keep their
@@ -335,6 +367,7 @@ final class DownloadManager {
         case .failed(let reason):
             updateJob(jobID) { $0.status = .failed; $0.errorMessage = reason }
             haptic(.error)
+            notify(jobID) { NotificationService.shared.notifyFailed(name: $0.name, reason: reason) }
             LiveActivityService.shared.end()
         case .cancelled:
             switch intent {
@@ -494,6 +527,7 @@ final class DownloadManager {
         activeJobID = nil
         recentlyCompletedJobID = jobID
         haptic(.success)
+        notify(jobID) { NotificationService.shared.notifyFinished(name: $0.name, note: $0.errorMessage) }
         pruneHistory()
         save()
         LiveActivityService.shared.end()
@@ -653,11 +687,18 @@ final class DownloadManager {
         let days = SettingsStore.shared.settings.keepCompletedHistoryDays
         guard days > 0 else { return }
         let cutoff = Date().addingTimeInterval(-Double(days) * 86_400)
-        jobs.removeAll { $0.status.isTerminal && ($0.completedAt ?? $0.addedAt) < cutoff }
+        forget { ($0.completedAt ?? $0.addedAt) < cutoff }
     }
 
     private func haptic(_ type: UINotificationFeedbackGenerator.FeedbackType) {
         UINotificationFeedbackGenerator().notificationOccurred(type)
+    }
+
+    /// The notification text needs the job's final name and notes, which only exist after the
+    /// status update — look it up rather than passing a stale copy around.
+    private func notify(_ jobID: UUID, _ body: (DownloadJob) -> Void) {
+        guard let job = jobs.first(where: { $0.id == jobID }) else { return }
+        body(job)
     }
 
     // MARK: - Mapping app models → engine models
