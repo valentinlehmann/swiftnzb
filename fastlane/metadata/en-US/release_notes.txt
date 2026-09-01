@@ -1,1 +1,11 @@
-First release: parallel downloads from your Usenet provider, automatic PAR2 verification and repair, RAR extraction, Live Activity progress, and Files app integration.
+The screen now stays awake while a download runs, so it keeps going when you set the device down. You can turn that off under Settings, Background.
+
+A notification tells you when a download finishes or fails while you are in another app.
+
+A finished download has a Show in Files button that opens its folder.
+
+The Downloads list is searchable by name, and you choose how long finished downloads stay in it.
+
+Siri and Shortcuts can pause the queue, resume it, or say what is downloading.
+
+Fixed: deleting a failed download now also frees the space its half-finished files were using.
