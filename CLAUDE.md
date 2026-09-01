@@ -118,10 +118,11 @@ SwiftNZBWidgets/             Live Activity (WidgetKit)
   require it). The list of both bundle IDs for **match** lives in the **Matchfile**.
 - The **Gemfile** must declare `multi_json` (and `abbrev`) — Bundler 4 / Ruby 3.3+ won't
   auto-load these transitive fastlane deps. No `Gemfile.lock` committed.
-- **Build numbers** come from `CURRENT_PROJECT_VERSION` (both Info.plists reference it) with
-  `VERSIONING_SYSTEM: apple-generic` in `project.yml`, so fastlane's `update_build_number` reaches
-  the built app. Pinning a literal there makes every upload arrive as build 1, and the second
-  upload of a version is then rejected as a duplicate.
+- **Build numbers** are a timestamp set per upload by the `update_build_number` lane, which runs
+  `agvtool new-version -all` — that writes CFBundleVersion into the Info.plists *and*
+  CURRENT_PROJECT_VERSION. Both plists reference `$(CURRENT_PROJECT_VERSION)` and `project.yml`
+  sets `VERSIONING_SYSTEM: apple-generic`, so a build made without fastlane (Xcode, or a local
+  `xcodebuild`) gets the same number the project setting carries instead of a stale literal.
 - iPad **must** declare all four orientations (`…~ipad` incl. `PortraitUpsideDown`) or
   `upload_to_testflight` validation fails (409). iPhone keeps three.
 - **iCloud KVS capability** must be enabled on the App ID (entitlement
