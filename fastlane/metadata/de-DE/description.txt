@@ -1,25 +1,27 @@
-SwiftNZB ist ein nativer Usenet-Client (NNTP) für iPhone und iPad. Verbinde dein eigenes Usenet-Provider-Konto, importiere eine NZB-Datei, und SwiftNZB lädt sie direkt in die Dateien-App — automatisch geprüft, repariert und entpackt.
+SwiftNZB lädt NZB-Dateien auf dem iPhone und iPad herunter. Die App ist selbst der Downloader, nicht die Fernsteuerung für einen, der woanders läuft. Sie baut die Verbindungen auf, dekodiert die Artikel, prüft mit PAR2, entpackt die Archive und legt das Ergebnis in der Dateien-App ab. Kein Heimserver, keine Desktop-App, nichts, was durchlaufen muss.
 
-So wie eine Mail-App ein E-Mail-Konto braucht, braucht SwiftNZB ein Konto bei einem Usenet-Provider (separat bei kommerziellen Anbietern erhältlich). Die App enthält keine Inhalte und keine Suche — du importierst deine eigenen NZB-Dateien über das Share-Sheet oder den Dateiauswahldialog, den Rest erledigt SwiftNZB.
+Was du brauchst, ist ein eigenes Konto bei einem Usenet-Provider, so wie eine Mail-App ein Mail-Konto braucht. Das verkaufen die Anbieter separat. SwiftNZB bringt keine Inhalte und keine Suche mit. Du gibst der App eine .nzb-Datei über das Share-Sheet oder die Dateiauswahl, und anders kommt nichts hinein.
 
-SCHNELLE, ZUVERLÄSSIGE ENGINE
-• Parallele TLS-Verbindungen zu deinem Server, automatisch optimiert
-• Gebaut für echte Mobilfunknetze: übersteht Zellenwechsel, Verbindungsabbrüche und WLAN/Mobilfunk-Wechsel nahtlos
-• Downloads pausieren, fortsetzen und umsortieren; alles macht genau dort weiter, wo es aufgehört hat — auch nach dem Beenden der App
-• Optionales Tempolimit und Mobilfunk-Einstellungen
+DIE DOWNLOAD-ENGINE
+• Viele parallele TLS-Verbindungen zu deinem Server, und die App passt ihre Anzahl an die Leitung an
+• Für Mobilfunk gebaut. Zellwechsel, abgerissene Verbindungen und der Sprung zwischen WLAN und Mobilfunk kosten keinen Fortschritt
+• Pausieren, fortsetzen, umsortieren. Ein Download macht bei dem Segment weiter, an dem er stehen geblieben ist, auch wenn du die App vorher beendet hast
+• Optionales Tempolimit und eigene Regeln für Mobilfunk
+• Der Bildschirm bleibt an, solange ein Download läuft, damit er weiterläuft, wenn du das Gerät weglegst
 
-AUTOMATISCHE NACHBEARBEITUNG
-• PAR2-Prüfung und Fehlerreparatur, komplett auf dem Gerät
-• Entpacken von RAR-Archiven, auch mehrteilige Sets
-• Fertige Dateien erscheinen in der Dateien-App, pro Download sortiert
+NACH DEM DOWNLOAD
+• PAR2-Prüfung und Reparatur, auf dem Gerät
+• RAR entpacken, auch mehrteilige Sets
+• Fertige Dateien landen in der Dateien-App, ein Ordner pro Download
 
-GEMACHT FÜR iOS
-• Live-Aktivität mit Fortschritt auf dem Sperrbildschirm und in der Dynamic Island, inklusive Pause/Weiter-Tasten
-• Natives SwiftUI-Design für iPhone und iPad
-• Server-Einstellungen synchronisieren über iCloud; Passwörter bleiben im Schlüsselbund
-• Keine Werbung, kein Tracking, keine Konten — die App spricht nur mit dem Server, den du einrichtest
+AUF iOS
+• Live-Aktivität auf dem Sperrbildschirm und in der Dynamic Island, mit Pause- und Weiter-Taste
+• SwiftUI, gebaut für iPhone und iPad
+• Siri und Kurzbefehle pausieren die Warteschlange, setzen sie fort oder sagen an, was gerade läuft
+• Server-Einstellungen synchronisieren über iCloud, Passwörter bleiben im Schlüsselbund
+• Keine Werbung, kein Tracking, keine Konten. Die App spricht mit dem Server, den du einrichtest, und mit keinem anderen
 
-PRIVAT BY DESIGN
-SwiftNZB sammelt keine Daten. Deine Zugangsdaten liegen im System-Schlüsselbund, und Downloads laufen ausschließlich über deinen eigenen Usenet-Provider.
+DATENSCHUTZ
+SwiftNZB sammelt keine Daten. Deine Zugangsdaten liegen im System-Schlüsselbund. Downloads laufen über deinen eigenen Provider, ein Server des Entwicklers ist nirgends beteiligt.
 
-SwiftNZB erfordert ein Konto bei einem Usenet-Provider. Lade nur Inhalte herunter, zu deren Abruf du berechtigt bist.
+SwiftNZB braucht ein Konto bei einem Usenet-Provider. Lade nur herunter, wozu du berechtigt bist.

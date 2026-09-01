@@ -1,25 +1,27 @@
-SwiftNZB is a native Usenet (NNTP) client for iPhone and iPad. Connect your own Usenet provider account, import an NZB file, and SwiftNZB downloads it straight to the Files app — verified, repaired, and extracted automatically.
+SwiftNZB downloads NZB files on your iPhone and iPad. The app is the downloader itself, not a remote control for one running somewhere else. It opens the connections, decodes the articles, verifies with PAR2, extracts the archives and writes the result into the Files app. No home server, no desktop app, nothing that has to stay switched on.
 
-Like an email app needs a mail account, SwiftNZB needs a Usenet provider account (sold separately by commercial providers). The app contains no content and no search — you import your own NZB files through the share sheet or file picker, and SwiftNZB handles the rest.
+What you do need is your own Usenet provider account, the same way a mail app needs a mail account. Providers sell those separately. SwiftNZB ships no content and no search. You hand the app an .nzb file through the share sheet or the file picker, and that is the only way anything gets in.
 
-FAST, RELIABLE ENGINE
-• Parallel TLS connections to your server, tuned automatically
-• Built for real-world mobile networks: seamlessly survives cell handoffs, dropped connections, and Wi-Fi/cellular switches
-• Pause, resume, and reorder downloads; everything picks up exactly where it left off — even after force-quitting
-• Optional download speed limit and cellular controls
+THE DOWNLOAD ENGINE
+• Many parallel TLS connections to your server, and the app adjusts how many it uses to suit the link
+• Made for mobile networks. Cell handoffs, dead sockets and the jump between Wi-Fi and cellular cost no progress
+• Pause, resume, reorder. A download continues at the segment it stopped on, even after you force-quit the app
+• Optional speed limit and separate rules for cellular
+• The screen stays awake while a download runs, so it keeps going when you set the device down
 
-AUTOMATIC POST-PROCESSING
-• PAR2 verification and error repair, fully on-device
-• RAR archive extraction, including multi-volume sets
-• Finished files appear in the Files app, organized per download
+AFTER THE DOWNLOAD
+• PAR2 verification and repair, on the device
+• RAR extraction, multi-volume sets included
+• Finished files land in the Files app, one folder per download
 
-MADE FOR iOS
-• Live Activity with progress on the Lock Screen and in the Dynamic Island, including pause/resume buttons
-• Native SwiftUI design for iPhone and iPad
-• Server settings sync across your devices via iCloud; passwords stay in your Keychain
-• No ads, no tracking, no accounts — the app talks only to the server you configure
+ON iOS
+• Live Activity on the Lock Screen and in the Dynamic Island, with pause and resume buttons
+• SwiftUI, built for both iPhone and iPad
+• Siri and Shortcuts can pause the queue, resume it, or say what is downloading
+• Server settings sync across your devices over iCloud, passwords stay in the Keychain
+• No ads, no tracking, no accounts. The app talks to the server you configure and to nothing else
 
-PRIVATE BY DESIGN
-SwiftNZB collects no data. Your credentials are stored in the system Keychain, and downloads never touch any server other than your own Usenet provider.
+PRIVACY
+SwiftNZB collects no data. Your credentials live in the system Keychain. Downloads run through your own provider, with no developer server anywhere in the path.
 
-SwiftNZB requires an account with a Usenet provider. Only download content you have the right to access.
+SwiftNZB needs an account with a Usenet provider. Only download what you have the right to access.

@@ -1,1 +1,1 @@
-SwiftNZB — Usenet-Client
+SwiftNZB: NZB-Downloader

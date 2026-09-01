@@ -50,6 +50,22 @@ Set build number to current date/time
 
 Push a new beta build to TestFlight
 
+### ios release
+
+```sh
+[bundle exec] fastlane ios release
+```
+
+Build and upload a release (binary + metadata) to the App Store. Does not auto-submit.
+
+### ios metadata
+
+```sh
+[bundle exec] fastlane ios metadata
+```
+
+Upload only the listing metadata under fastlane/metadata (no build).
+
 ----
 
 This README.md is auto-generated and will be re-generated every time [_fastlane_](https://fastlane.tools) is run.
