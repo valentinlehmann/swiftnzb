@@ -45,6 +45,23 @@ platform :ios do
       force: true
     )
   end
+
+  # Listing texts only, no build. Same metadata as :release, minus the binary — use it when only
+  # fastlane/metadata changed. Does not submit for review.
+  desc "Upload only the listing metadata under fastlane/metadata (no build)."
+  lane :metadata do
+    upload_to_app_store(
+      metadata_path: "./fastlane/metadata",
+      # Without this, deliver looks for an already-editable App Store version and spins on
+      # "Cannot find edit app store version". Naming it makes deliver create the version.
+      app_version: get_version_number(xcodeproj: "SwiftNZB.xcodeproj", target: "SwiftNZB"),
+      skip_binary_upload: true,
+      skip_screenshots: true,
+      submit_for_review: false,
+      precheck_include_in_app_purchases: false,
+      force: true
+    )
+  end
 end
 
 desc "Register the app + widget App IDs on the Apple Developer portal (one-time, before match)"
