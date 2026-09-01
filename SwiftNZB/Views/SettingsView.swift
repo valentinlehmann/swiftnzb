@@ -16,7 +16,7 @@ struct SettingsView: View {
                 row("Bandwidth", "Speed limit and cellular use", "speedometer") { BandwidthSettingsView() }
                 row("Post-Processing", "PAR2 repair and RAR extraction", "wand.and.stars") { PostProcessingSettingsView() }
                 row("Files & Storage", "Output location and free space", "folder") { StorageSettingsView() }
-                row("Background", "Downloading while the app is closed", "bolt.badge.clock") { BackgroundSettingsView() }
+                row("Background", "Screen, notifications and background time", "bolt.badge.clock") { BackgroundSettingsView() }
             }
             Section {
                 row("About", nil, "info.circle") { AboutView() }

@@ -10,6 +10,18 @@ struct StorageSettingsView: View {
 
     private var available: Int64? { FileLocationService.shared.availableCapacityBytes() }
 
+    /// 0 means keep everything, matching `DownloadSettings.keepCompletedHistoryDays`.
+    private static let retentionChoices = [7, 30, 90, 0]
+
+    private static func retentionLabel(_ days: Int) -> LocalizedStringKey {
+        switch days {
+        case 7: return "1 Week"
+        case 30: return "1 Month"
+        case 90: return "3 Months"
+        default: return "Forever"
+        }
+    }
+
     var body: some View {
         Form {
             Section {
@@ -22,6 +34,21 @@ struct StorageSettingsView: View {
                 Text("Completed Downloads")
             } footer: {
                 Text("\"Subfolder per download\" keeps each download's files together. \"Single folder\" puts everything in one place. Either way, the files show up in the Files app under \"SwiftNZB\".")
+            }
+
+            Section {
+                Picker("Keep Finished Downloads", selection: $settingsStore.settings.keepCompletedHistoryDays) {
+                    ForEach(Self.retentionChoices, id: \.self) { days in
+                        Text(Self.retentionLabel(days)).tag(days)
+                    }
+                }
+                .onChange(of: settingsStore.settings.keepCompletedHistoryDays) {
+                    DownloadManager.shared.applyHistoryRetention()
+                }
+            } header: {
+                Text("Downloads List")
+            } footer: {
+                Text("How long a finished download stays in the list. Removing an entry also discards whatever a failed download left half-finished. Files that made it to the Files app are never touched.")
             }
 
             Section {

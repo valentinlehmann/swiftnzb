@@ -7,6 +7,7 @@ import SwiftUI
 
 struct JobDetailView: View {
     let jobID: UUID
+    @Environment(\.openURL) private var openURL
     @State private var manager = DownloadManager.shared
     @State private var confirmingCancel = false
     @State private var isExtracting = false
@@ -91,6 +92,9 @@ struct JobDetailView: View {
                     LabeledContent("Finished") {
                         Text(completedAt.formatted(date: .abbreviated, time: .shortened))
                     }
+                }
+                Button { showInFiles(outputFolder(job)) } label: {
+                    Label("Show in Files", systemImage: "folder")
                 }
             } else {
                 LabeledContent("Downloaded") { statValue(Format.bytes(job.downloadedBytes)) }
@@ -219,6 +223,17 @@ struct JobDetailView: View {
         }
         return FileLocationService.shared.completedDirectory(
             for: job, mode: SettingsStore.shared.settings.folderMode)
+    }
+
+    /// Open the download's folder in the Files app. `shareddocuments:` is the scheme Files
+    /// answers to for a path inside a sharing-enabled app container, which is where completed
+    /// downloads live (`UIFileSharingEnabled`). Nothing happens if the system declines it, so the
+    /// per-file ShareLink rows below stay the reliable way out.
+    private func showInFiles(_ folder: URL) {
+        guard var components = URLComponents(url: folder, resolvingAgainstBaseURL: false) else { return }
+        components.scheme = "shareddocuments"
+        guard let url = components.url else { return }
+        openURL(url)
     }
 
     private func contents(of folder: URL) -> [URL] {

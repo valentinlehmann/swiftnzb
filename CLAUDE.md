@@ -53,7 +53,8 @@ SwiftNZB/
   Services/                  @Observable @MainActor singletons (DownloadManager, ServerStore, …)
   ViewModels/                One @Observable VM per screen
   Views/                     Screens + Views/Components/ (reusable)
-  Intents/                   App Intents (DownloadIntents shared into widget) + AppShortcuts
+  Intents/                   App Intents: DownloadIntents (shared into widget), QueueIntents
+                             (app-only: Siri/Shortcuts actions + AppShortcutsProvider)
 SwiftNZBWidgets/             Live Activity (WidgetKit)
 ```
 
@@ -93,6 +94,15 @@ SwiftNZBWidgets/             Live Activity (WidgetKit)
   (`CircleActionButton`), not frame+padding alone.
 - Adding a field to any Codable model / payload → use `decodeIfPresent` defaults
   (migration + cross-version safety).
+- `@Observable` + a `didSet` on a stored property is safe: the macro moves the observer onto the
+  private backing store and still emits the observation accessors (verified via
+  `-dump-macro-expansions`). `DownloadManager.activeJobID` relies on this.
+- **Downloads only progress in the foreground**, so `DownloadManager.refreshIdleTimer()` holds
+  `isIdleTimerDisabled` while a job is active (auto-lock would background the app and suspend the
+  sockets). It is driven by `activeJobID`'s `didSet` — don't set `activeJobID` behind its back.
+- Dropping a job from history must go through `DownloadManager.forget(where:)`: a failed job keeps
+  its partial `.part` files for resume, so removing the record without the working directory
+  strands those bytes where no screen can reach them.
 - Files added under a target's source path are picked up on the next `xcodegen generate`. Files
   shared across targets are listed explicitly in `project.yml` (currently
   `DownloadActivityAttributes.swift`; `DownloadIntents.swift` will join it).
@@ -108,6 +118,10 @@ SwiftNZBWidgets/             Live Activity (WidgetKit)
   require it). The list of both bundle IDs for **match** lives in the **Matchfile**.
 - The **Gemfile** must declare `multi_json` (and `abbrev`) — Bundler 4 / Ruby 3.3+ won't
   auto-load these transitive fastlane deps. No `Gemfile.lock` committed.
+- **Build numbers** come from `CURRENT_PROJECT_VERSION` (both Info.plists reference it) with
+  `VERSIONING_SYSTEM: apple-generic` in `project.yml`, so fastlane's `update_build_number` reaches
+  the built app. Pinning a literal there makes every upload arrive as build 1, and the second
+  upload of a version is then rejected as a duplicate.
 - iPad **must** declare all four orientations (`…~ipad` incl. `PortraitUpsideDown`) or
   `upload_to_testflight` validation fails (409). iPhone keeps three.
 - **iCloud KVS capability** must be enabled on the App ID (entitlement
