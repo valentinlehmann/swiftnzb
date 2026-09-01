@@ -127,6 +127,7 @@ struct QueueView: View {
                         .listRowBackground(Color.clear)
                 }
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                Section { summaryRows(active) }
             }
             if !activeJobs.isEmpty {
                 Section("Active") { ForEach(activeJobs) { jobRow($0) } }
@@ -176,33 +177,38 @@ struct QueueView: View {
 
     @ViewBuilder
     private func summaryHeader(_ job: DownloadJob) -> some View {
-        let remaining = max(0, job.totalBytes - job.downloadedBytes)
-        let downloading = job.status == .downloading
-        VStack(spacing: 14) {
-            HStack(spacing: 14) {
-                progressRing(job)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(job.name).font(.headline).lineLimit(1)
-                    Text(manager.isWaitingForNetwork ? "Waiting for network…" : job.status.title)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .contentTransition(.opacity)
-                }
-                Spacer()
+        HStack(spacing: 14) {
+            progressRing(job)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(job.name).font(.headline).lineLimit(1)
+                Text(manager.isWaitingForNetwork ? "Waiting for network…" : job.status.title)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .contentTransition(.opacity)
             }
-            HStack(spacing: 10) {
-                StatTile("Speed", downloading ? Format.speed(manager.aggregateBytesPerSecond) : "—",
-                         systemImage: "speedometer", tint: downloading ? .accentColor : .secondary)
-                StatTile("Remaining", Format.bytes(remaining), systemImage: "arrow.down.circle")
-            }
-            HStack(spacing: 10) {
-                StatTile("ETA",
-                         downloading ? (Format.eta(remainingBytes: remaining, bytesPerSecond: manager.aggregateBytesPerSecond) ?? "—") : "—",
-                         systemImage: "clock")
-                StatTile("Connections", "\(manager.activeConnections)", systemImage: "point.3.connected.trianglepath.dotted")
-            }
+            Spacer()
         }
         .padding(.vertical, 4)
+    }
+
+    /// The active download's numbers, as rows rather than a tile grid (the same move the detail
+    /// page made). A stat only gets a row where it means something: a paused or post-processing
+    /// job has no speed, no ETA and no open connections, and four dashes said nothing.
+    @ViewBuilder
+    private func summaryRows(_ job: DownloadJob) -> some View {
+        let remaining = max(0, job.totalBytes - job.downloadedBytes)
+        let downloading = job.status == .downloading
+        if downloading {
+            StatRow("Speed", Format.speed(manager.aggregateBytesPerSecond))
+        }
+        StatRow("Remaining", Format.bytes(remaining))
+        if downloading {
+            if let eta = Format.eta(remainingBytes: remaining,
+                                    bytesPerSecond: manager.aggregateBytesPerSecond) {
+                StatRow("ETA", eta)
+            }
+            StatRow("Connections", "\(manager.activeConnections)")
+        }
     }
 
     private func progressRing(_ job: DownloadJob) -> some View {
