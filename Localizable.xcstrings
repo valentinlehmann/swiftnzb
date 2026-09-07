@@ -1,13 +1,47 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "\"Subfolder per download\" keeps each download's files together; \"Single folder\" puts everything in one place. Completed downloads appear in the Files app under \"SwiftNZB\"." : {
+    "\"Subfolder per download\" keeps each download's files together. \"Single folder\" puts everything in one place. Either way, the files show up in the Files app under \"SwiftNZB\"." : {
+
+    },
+    "%@ is at %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ is at %2$@."
+          }
+        }
+      }
+    },
+    "%@ per month, billed yearly" : {
 
     },
     "%lld segments" : {
 
     },
+    "^[%lld download is waiting](inflect: true), none of them running." : {
+
+    },
+    "^[%lld file](inflect: true)" : {
+
+    },
+    "^[%lld free download](inflect: true) left" : {
+
+    },
+    "^[%lld free download](inflect: true) left." : {
+
+    },
     "0" : {
+
+    },
+    "1 Month" : {
+
+    },
+    "1 Week" : {
+
+    },
+    "3 Months" : {
 
     },
     "A–Z" : {
@@ -34,10 +68,16 @@
     "Add to Queue" : {
 
     },
-    "Add your Usenet server to start downloading NZB files." : {
+    "Add your Usenet server, then import an NZB to start downloading." : {
 
     },
-    "All time" : {
+    "All Time" : {
+
+    },
+    "Archive Parts" : {
+
+    },
+    "Archive Password" : {
 
     },
     "Assembling" : {
@@ -52,7 +92,19 @@
     "Background" : {
 
     },
+    "Background resume only runs while the device is charging. Turn this off to let it run on battery too." : {
+
+    },
     "Bandwidth" : {
+
+    },
+    "Best value" : {
+
+    },
+    "Billed monthly" : {
+
+    },
+    "Buy SwiftNZB Pro" : {
 
     },
     "Cancel" : {
@@ -67,7 +119,16 @@
     "Cancelled" : {
 
     },
-    "Caps the total download speed across all connections — handy on shared or metered links. Off means download as fast as the connections allow." : {
+    "Caps the combined speed of every connection. Off means SwiftNZB downloads as fast as the server allows." : {
+
+    },
+    "Check Download Status" : {
+
+    },
+    "Check Downloads" : {
+
+    },
+    "Choose Files on Import" : {
 
     },
     "Cleaning up" : {
@@ -76,7 +137,7 @@
     "Clear All" : {
 
     },
-    "Clear all history?" : {
+    "Clear all entries?" : {
 
     },
     "Completed" : {
@@ -88,10 +149,10 @@
     "Completed Downloads" : {
 
     },
-    "Connected successfully." : {
+    "Connections" : {
 
     },
-    "Connections" : {
+    "Content" : {
 
     },
     "Date" : {
@@ -112,10 +173,19 @@
     "Deselect All" : {
 
     },
+    "Details" : {
+
+    },
     "Device Storage" : {
 
     },
     "Done" : {
+
+    },
+    "Download failed" : {
+
+    },
+    "Download finished" : {
 
     },
     "Download Removed" : {
@@ -127,7 +197,16 @@
     "Downloading" : {
 
     },
-    "Downloading while the app is closed" : {
+    "Downloads" : {
+
+    },
+    "Downloads List" : {
+
+    },
+    "Downloads pause on cellular and in Low Data Mode, then resume once you are back on Wi-Fi." : {
+
+    },
+    "Downloads paused." : {
 
     },
     "Edit" : {
@@ -142,16 +221,31 @@
     "ETA" : {
 
     },
+    "Everything else stays exactly as it is" : {
+
+    },
+    "Expert" : {
+
+    },
+    "Extract" : {
+
+    },
+    "Extract Again" : {
+
+    },
     "Extract RAR Archives" : {
 
     },
     "Extracting" : {
 
     },
-    "Extraction temporarily needs extra space beyond the download size." : {
+    "Extraction needs extra room on top of the download size." : {
 
     },
     "Failed" : {
+
+    },
+    "Fewest files first" : {
 
     },
     "Files" : {
@@ -160,13 +254,19 @@
     "Files & Storage" : {
 
     },
+    "Finished" : {
+
+    },
+    "Finished, now in Downloads" : {
+
+    },
     "Folder name" : {
 
     },
-    "Free after download" : {
+    "Forever" : {
 
     },
-    "History" : {
+    "Free after download" : {
 
     },
     "Host" : {
@@ -175,16 +275,22 @@
     "How background downloading works" : {
 
     },
-    "How many article downloads run in parallel. More connections download faster, but never exceed the limit your Usenet plan allows or the provider may refuse them." : {
+    "How long a finished download stays in the list. Removing an entry also discards whatever a failed download left half-finished. Files that made it to the Files app are never touched." : {
 
     },
-    "Import an NZB file to start downloading." : {
+    "How many articles download at once. More is faster, up to the limit your Usenet plan allows. Past that, the provider starts refusing connections." : {
+
+    },
+    "Import an NZB file to start downloading. Finished ones appear under Downloads." : {
 
     },
     "Import Failed" : {
 
     },
-    "iOS can't keep Usenet downloads running unattended in the background — large downloads need the app open. When you leave the app, SwiftNZB finishes the current piece, saves its place, and resumes automatically next time it gets a moment to run or when you reopen it." : {
+    "Included, for good" : {
+
+    },
+    "iOS won't keep a Usenet connection alive in the background, so large downloads need the app open. When you leave, SwiftNZB finishes the article it is on and saves its place. It resumes when iOS next gives it time to run, or as soon as you reopen the app." : {
 
     },
     "Job" : {
@@ -193,28 +299,40 @@
     "Keep Downloading" : {
 
     },
-    "Large files are often split into multi-part RAR archives for transfer. When enabled, SwiftNZB unpacks them into the completed folder and (optionally) removes the now-redundant archive parts to save space." : {
+    "Keep Finished Downloads" : {
+
+    },
+    "Keep Screen Awake" : {
 
     },
     "Largest first" : {
 
     },
-    "Last 7 days" : {
+    "Last 7 Days" : {
 
     },
-    "Last 24h" : {
+    "Last 24 Hours" : {
 
     },
-    "Last 30 days" : {
+    "Last 30 Days" : {
+
+    },
+    "Lifetime" : {
+
+    },
+    "Lifetime is a one-time purchase. Nothing renews." : {
+
+    },
+    "Lifetime, included" : {
 
     },
     "Limit Download Speed" : {
 
     },
-    "Limits opportunistic background resume to when the device is plugged in, to save battery." : {
+    "Low on space. Extraction needs room beyond the download itself." : {
 
     },
-    "Low on space — extraction needs extra room, so leave some headroom." : {
+    "Manage Subscription" : {
 
     },
     "Max Connections" : {
@@ -223,7 +341,16 @@
     "MB/s" : {
 
     },
+    "Monthly" : {
+
+    },
+    "Most files first" : {
+
+    },
     "Name" : {
+
+    },
+    "Names the download and its folder in the Files app." : {
 
     },
     "Newest first" : {
@@ -232,10 +359,19 @@
     "No Downloads" : {
 
     },
-    "No Files" : {
+    "No purchase found for this Apple Account." : {
 
     },
-    "No History" : {
+    "Not Now" : {
+
+    },
+    "Nothing downloaded from this server yet." : {
+
+    },
+    "Nothing is downloading." : {
+
+    },
+    "Notify When a Download Ends" : {
 
     },
     "OK" : {
@@ -244,7 +380,16 @@
     "Oldest first" : {
 
     },
+    "One purchase covers all your devices" : {
+
+    },
+    "One-time purchase" : {
+
+    },
     "Only When Charging" : {
+
+    },
+    "Opens SwiftNZB and starts the queue again." : {
 
     },
     "Options" : {
@@ -256,7 +401,7 @@
     "Output location and free space" : {
 
     },
-    "PAR2 recovery files detect damaged or missing pieces after a download and rebuild them, so an incomplete download can still finish intact." : {
+    "PAR2 recovery files find damaged and missing pieces and rebuild them, so a download with holes in it can still finish intact." : {
 
     },
     "PAR2 repair and RAR extraction" : {
@@ -274,7 +419,13 @@
     "Pause All" : {
 
     },
+    "Pause All Downloads" : {
+
+    },
     "Pause Download" : {
+
+    },
+    "Pause Downloads" : {
 
     },
     "Pause on Cellular" : {
@@ -283,7 +434,13 @@
     "Paused" : {
 
     },
+    "Pauses every download in the queue." : {
+
+    },
     "Performance" : {
+
+    },
+    "Plan" : {
 
     },
     "Port" : {
@@ -292,7 +449,16 @@
     "Post-Processing" : {
 
     },
+    "Posts usually arrive as a set of RAR volumes. SwiftNZB unpacks them into the completed folder, and deletes the volumes afterwards if you let it." : {
+
+    },
     "Preselected when you add a download. Picking a different one in the add sheet updates this." : {
+
+    },
+    "Privacy Policy" : {
+
+    },
+    "Pro" : {
 
     },
     "Progress" : {
@@ -304,10 +470,28 @@
     "Queued" : {
 
     },
+    "Recovery Data" : {
+
+    },
+    "Redeem Code" : {
+
+    },
     "Remaining" : {
 
     },
+    "Renews automatically at %@ per month until you cancel. Cancel any time in the App Store." : {
+
+    },
+    "Renews automatically at %@ per year until you cancel. Cancel any time in the App Store." : {
+
+    },
     "Repairing" : {
+
+    },
+    "Reports what SwiftNZB is downloading and how far it has got." : {
+
+    },
+    "Restore Purchases" : {
 
     },
     "Resume" : {
@@ -316,7 +500,13 @@
     "Resume All" : {
 
     },
+    "Resume All Downloads" : {
+
+    },
     "Resume Download" : {
+
+    },
+    "Resume Downloads" : {
 
     },
     "Save" : {
@@ -325,7 +515,16 @@
     "Saving checks the connection first." : {
 
     },
+    "Screen, notifications and background time" : {
+
+    },
+    "Search downloads" : {
+
+    },
     "Select All" : {
+
+    },
+    "Sends a notification when a download finishes or fails while you are somewhere else. Nothing is sent while SwiftNZB is on screen." : {
 
     },
     "Server" : {
@@ -337,7 +536,10 @@
     "Settings" : {
 
     },
-    "Show Files" : {
+    "Show in Files" : {
+
+    },
+    "Shows the file list when you add an NZB, so you can leave parts out. Repair and extraction need every volume and PAR2 file a post carries, so a partial pick usually produces a download you can't open." : {
 
     },
     "Single Folder" : {
@@ -370,28 +572,64 @@
     "Subfolder per Download" : {
 
     },
+    "Subscribe" : {
+
+    },
     "SwiftNZB" : {
 
     },
-    "SwiftNZB contains no content and no search. You are responsible for the content you access, and should only download material you have the right to." : {
+    "SwiftNZB deletes the partly downloaded files." : {
 
     },
-    "SwiftNZB is a native client for the Usenet (NNTP) protocol. Bring your own Usenet provider account and NZB files. PAR2 verification and repair is a clean-room implementation; RAR extraction uses the UnRAR library." : {
+    "SwiftNZB is a native client for the Usenet (NNTP) protocol. Bring your own provider account and your own NZB files. PAR2 verification and repair is a clean-room implementation. RAR extraction uses the UnRAR library." : {
+
+    },
+    "SwiftNZB is free for the first 10 downloads. Pro removes the limit." : {
+
+    },
+    "SwiftNZB Pro" : {
+
+    },
+    "SwiftNZB Pro removes the limit" : {
+
+    },
+    "SwiftNZB Pro removes the limit. Everything you have already downloaded stays where it is." : {
+
+    },
+    "SwiftNZB ships no content and no search. You are responsible for what you download, and it should only be material you have the right to." : {
+
+    },
+    "Terms of Use" : {
 
     },
     "Test Connection" : {
 
     },
+    "Thanks. Downloads are unlimited on every device signed in to your Apple Account." : {
+
+    },
+    "The App Store did not return the prices. Check your connection and try again." : {
+
+    },
     "The output folder is empty." : {
 
     },
-    "The partially downloaded files will be deleted." : {
+    "The screen stays on while a download runs. iOS drops the Usenet connections as soon as the app leaves the foreground, and locking the screen does exactly that, so a download stops shortly after the screen goes dark." : {
 
     },
-    "This download is larger than the free space available." : {
+    "The server accepted the login." : {
 
     },
-    "This removes every completed and cancelled download from the list. Your downloaded files in the Files app are not affected." : {
+    "This archive needs a password. Indexer NZBs usually carry one, this one didn't." : {
+
+    },
+    "This clears the list. The downloaded files stay where they are in the Files app." : {
+
+    },
+    "This download is bigger than the space left on the device." : {
+
+    },
+    "This purchase needs approval. SwiftNZB Pro unlocks as soon as it goes through." : {
 
     },
     "Total" : {
@@ -400,16 +638,22 @@
     "Total size" : {
 
     },
+    "Try Again" : {
+
+    },
+    "Unlimited downloads" : {
+
+    },
     "Usage" : {
 
     },
     "Use SSL" : {
 
     },
-    "Used as the download's name and its folder in the Files app." : {
+    "Username" : {
 
     },
-    "Username" : {
+    "Valid Until" : {
 
     },
     "Verify & Repair with PAR2" : {
@@ -427,7 +671,16 @@
     "Welcome to SwiftNZB" : {
 
     },
-    "When on, downloads pause on cellular or Low Data Mode connections and resume automatically on Wi-Fi." : {
+    "Yearly" : {
+
+    },
+    "You have used your 10 free downloads. SwiftNZB Pro removes the limit — everything you already downloaded stays where it is." : {
+
+    },
+    "You have used your free downloads" : {
+
+    },
+    "You installed SwiftNZB before it had a purchase, so Pro is yours for good. There is nothing to renew and nothing to cancel." : {
 
     },
     "Your Usenet provider's host, port, login, and how many connections it allows." : {

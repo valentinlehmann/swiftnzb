@@ -85,7 +85,7 @@ struct QueueView: View {
             Label("No Downloads", systemImage: "tray.and.arrow.down")
         } description: {
             if isOutOfFreeDownloads {
-                Text("You have used your 10 free downloads. SwiftNZB Pro removes the limit — everything you already downloaded stays where it is.")
+                Text("You have used your 10 free downloads. SwiftNZB Pro removes the limit. Everything you already downloaded stays where it is.")
             } else {
                 Text("Import an NZB file to start downloading. Finished ones appear under Downloads.")
             }
