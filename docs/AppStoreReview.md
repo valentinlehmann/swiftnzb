@@ -66,6 +66,11 @@ Technical (all handled in the repo — verify before each submission):
 - [ ] The purchase screen is reachable **without spending free downloads**: Settings → SwiftNZB
       Pro, and from the welcome screen's top-right button before a server exists. Guideline
       2.1(b) — a reviewer who cannot find the purchases rejects the build.
+- [ ] **Demo credentials and the demo NZB are added by hand in App Store Connect, last.**
+      `fastlane/metadata/review_information/notes.txt` carries only the framing, because deliver
+      cannot supply a provider password or attach a file. Deliver **overwrites** the review notes
+      on every `metadata` or `release` run, so add the how-to-test steps *after* the final upload.
+      Run the metadata lane again and your credentials are gone.
 - [ ] Category: **Utilities**.
 - [ ] Support URL: the GitHub repo. Keep the README as clean as the listing — reviewers read
       the support URL. (Current README is fine.)
