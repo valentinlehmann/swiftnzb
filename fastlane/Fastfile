@@ -24,7 +24,9 @@ platform :ios do
   # demo Usenet account and a demo .nzb file, and the demo NZB has to be attached in the App Store
   # Connect UI (fastlane can't). So this uploads everything it can, then you finish in App Store
   # Connect: add screenshots (if not shipping them from ./fastlane/screenshots), attach the demo
-  # NZB, and press Submit. Full checklist: docs/AppStoreReview.md.
+  # NZB, select all three Pro products under "In-App Purchases and Subscriptions" (Apple requires
+  # an app's first in-app purchase to ride an app version, and deliver cannot attach them), and
+  # press Submit. Full checklist: docs/AppStoreReview.md.
   desc "Build and upload a release (binary + metadata) to the App Store. Does not auto-submit."
   lane :release do
     setup_ci if ENV['CI']
@@ -40,6 +42,9 @@ platform :ios do
       skip_screenshots: true,
       # Upload only — see the note above. Submit in App Store Connect after attaching the demo NZB.
       submit_for_review: false,
+      # Stays false: precheck cannot read in-app purchases under App Store Connect API-key auth,
+      # so flipping it buys nothing and can fail the upload. Read the three product descriptions
+      # by hand instead (no URLs, no platform names, no placeholder text).
       precheck_include_in_app_purchases: false,
       # Skip the interactive HTML metadata-preview confirmation so the lane runs unattended.
       force: true
@@ -58,6 +63,9 @@ platform :ios do
       skip_binary_upload: true,
       skip_screenshots: true,
       submit_for_review: false,
+      # Stays false: precheck cannot read in-app purchases under App Store Connect API-key auth,
+      # so flipping it buys nothing and can fail the upload. Read the three product descriptions
+      # by hand instead (no URLs, no platform names, no placeholder text).
       precheck_include_in_app_purchases: false,
       force: true
     )

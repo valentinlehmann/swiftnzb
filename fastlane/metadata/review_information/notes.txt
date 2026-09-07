@@ -4,7 +4,12 @@ The app contains no content, no search feature, no content index or catalog, and
 
 Nothing is collected or transmitted to us; the app talks exclusively to the server the user configures. There are no third-party SDKs, no analytics, no ads.
 
+SwiftNZB is free to use for the first 10 completed downloads. After that, adding a new download requires a purchase of SwiftNZB Pro, sold only through in-app purchase: SwiftNZB Pro Monthly, SwiftNZB Pro Yearly, and SwiftNZB Pro Lifetime. All three unlock the same thing, unlimited downloads, and all prices are read from the App Store at runtime. Customers who installed SwiftNZB before this version keep unlimited downloads permanently at no charge, so this update takes nothing away from existing users.
+
+The purchase screen can be opened at any time and does not use up free downloads: Settings tab, then SwiftNZB Pro. Before a server is configured it is also reachable from the "SwiftNZB Pro" button in the top right of the welcome screen. It lists the three products with their App Store prices, a Restore Purchases button and a Redeem Code button, and links to the privacy policy and to the standard Apple licence agreement. No account, sign-in, or server of ours is involved at any point.
+
 HOW TO TEST:
 1. Launch the app and tap "Add Server". Enter the demo account credentials provided in the demo account fields and tap Save (the app verifies the connection). Port 563, SSL on.
 2. Open the attached demo file "swiftnzb-review-demo.nzb" (AirDrop or Files app -> share -> SwiftNZB, or the + button on the Queue tab) and tap "Add".
 3. The download runs with a Live Activity on the Lock Screen / Dynamic Island; when it finishes, the file is verified (PAR2), extracted (RAR), and appears in the Files app under "On My iPhone -> SwiftNZB". The demo file contains test data created by us.
+4. To review the in-app purchases, open the Settings tab and tap SwiftNZB Pro. The three products are listed with their App Store prices. Restore Purchases re-reads the entitlement from the App Store. The download in step 2 counts as one of the ten free downloads, so the free tier does not have to be used up to reach this screen.
