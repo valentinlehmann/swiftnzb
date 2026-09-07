@@ -23,7 +23,7 @@ struct EntitlementDebugView: View {
             Section("Entitlement") {
                 StatRow("Pro", entitlements.isPro ? "yes" : "no")
                 StatRow("Grandfathered", purchases.isGrandfathered ? "yes" : "no")
-                StatRow("Source", purchases.activeProductID ?? "—")
+                StatRow("Source", purchases.activeProductID ?? "none")
                 StatRow("Products loaded", "\(purchases.products.count)")
             }
             Section("Free tier") {
