@@ -1,0 +1,27 @@
+name: metadata-ios-app
+# Manually triggered from the Actions tab (Run workflow). Uploads ONLY the listing texts under
+# fastlane/metadata via `fastlane metadata`, with no build. Use it when the description, release
+# notes or review notes changed and the App Store version already exists in App Store Connect,
+# which is the case deliver cannot handle from the release lane. Does not submit for review.
+on:
+  workflow_dispatch:
+jobs:
+  metadata:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - run: brew install xcodegen
+      - run: xcodegen generate
+      - run: bundle install
+      - run: bundle exec fastlane metadata
+        env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_PAT }}
+          APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+          APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
+          FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 10
+          FASTLANE_XCODEBUILD_SETTINGS_RETRIES: 5

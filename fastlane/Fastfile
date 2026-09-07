@@ -37,6 +37,11 @@ platform :ios do
     upload_to_app_store(
       api_key: api_key,
       metadata_path: "./fastlane/metadata",
+      # Name the version, as the :metadata lane does. Without it deliver derives the version and
+      # tries to create it, which App Store Connect rejects with "You cannot create a new version
+      # of the App in the current state" plus "The version number has been previously used" the
+      # moment a draft for that version already exists in App Store Connect.
+      app_version: get_version_number(xcodeproj: "SwiftNZB.xcodeproj", target: "SwiftNZB"),
       # No screenshots are committed yet. Add them under ./fastlane/screenshots and drop this flag
       # to have fastlane upload them, or upload them manually in App Store Connect.
       skip_screenshots: true,
@@ -55,7 +60,9 @@ platform :ios do
   # fastlane/metadata changed. Does not submit for review.
   desc "Upload only the listing metadata under fastlane/metadata (no build)."
   lane :metadata do
+    api_key = load_api_key
     upload_to_app_store(
+      api_key: api_key,
       metadata_path: "./fastlane/metadata",
       # Without this, deliver looks for an already-editable App Store version and spins on
       # "Cannot find edit app store version". Naming it makes deliver create the version.
