@@ -30,8 +30,10 @@ struct SettingsView: View {
                 row("About", nil, "info.circle") { AboutView() }
             }
             #if DEBUG
-            Section {
-                row("Entitlement (Debug)", nil, "ladybug") { EntitlementDebugView() }
+            if !AppRouter.isScreenshotRun {
+                Section {
+                    row("Entitlement (Debug)", nil, "ladybug") { EntitlementDebugView() }
+                }
             }
             #endif
         }

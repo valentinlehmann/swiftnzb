@@ -56,6 +56,41 @@ platform :ios do
     )
   end
 
+  # Composed App Store screenshots, built locally. No App Store Connect access, nothing uploaded.
+  #
+  # There is no UITest target and none is needed: the lane seeds the app's own persisted state
+  # (jobs.v1.json plus the free-download counter) and opens the right tab with a DEBUG-only
+  # `-startSection` launch argument, so no taps are driven and every shot is reproducible. The
+  # queue shot is a real download against whatever server the simulator has configured, and the
+  # capture waits for decoded bytes rather than a fixed delay.
+  #
+  # The device must be an iPhone 17 or 17 Pro: the bezel's aperture is exactly 1206x2622, so the
+  # capture drops in 1:1 with no resampling.
+  desc "Build composed 6.5-inch App Store screenshots into fastlane/screenshots (local only)."
+  lane :screenshots do |options|
+    sim = options[:sim] || ENV["SCREENSHOT_SIM"]
+    UI.user_error!("pass sim:<udid> (a booted-capable iPhone 17/17 Pro with a Usenet server set up)") unless sim
+    nzb = options[:nzb] || File.expand_path("~/Downloads/test_download_1000MB.nzb")
+    bezel = options[:bezel] || File.expand_path("~/Downloads/iPhone 17 - Mist Blue - Portrait.png")
+    background = options[:background] || File.expand_path("~/Downloads/background.png")
+    [nzb, bezel, background].each { |f| UI.user_error!("missing #{f}") unless File.exist?(f) }
+
+    # Debug, because the -startSection argument and the entitlement debug screen are #if DEBUG.
+    derived = File.expand_path("../.build/screenshots", __dir__)
+    sh("xcodebuild", "-project", "../SwiftNZB.xcodeproj", "-scheme", "SwiftNZB",
+       "-configuration", "Debug", "-sdk", "iphonesimulator",
+       "-derivedDataPath", derived, "CODE_SIGNING_ALLOWED=NO", "build")
+    app = File.join(derived, "Build/Products/Debug-iphonesimulator/SwiftNZB.app")
+    UI.user_error!("build produced no app at #{app}") unless Dir.exist?(app)
+
+    sh(*["python3", File.expand_path("screenshot/shoot.py", __dir__),
+         "--sim", sim, "--app", app, "--nzb", nzb, "--bezel", bezel,
+         "--background", background,
+         "--out", File.expand_path("../fastlane/screenshots/en-US", __dir__),
+         "--states", (options[:states] || "queue,history,settings")])
+    UI.success("screenshots in fastlane/screenshots/en-US")
+  end
+
   # Listing texts only, no build. Same metadata as :release, minus the binary — use it when only
   # fastlane/metadata changed. Does not submit for review.
   desc "Upload only the listing metadata under fastlane/metadata (no build)."
