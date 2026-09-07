@@ -13,7 +13,10 @@ struct SwiftNZBApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
-                .task { DownloadManager.shared.start() }
+                .task {
+                    DownloadManager.shared.start()
+                    Entitlements.shared.start()
+                }
                 .onOpenURL { url in
                     if url.isFileURL { ImportCoordinator.shared.handle(url: url) }
                 }
@@ -28,6 +31,10 @@ struct SwiftNZBApp: App {
                 Task { await DownloadManager.shared.flushForSuspension() }
             case .active:
                 BackgroundTaskService.shared.endWindDown()
+                // The only cover for a subscription lapsing: a renewal produces a transaction, an
+                // expiry produces none. A StoreKit sheet only takes the scene to .inactive, which
+                // falls through to `default` below, so nothing here disturbs a running download.
+                Task { await PurchaseStore.shared.refreshEntitlement() }
             default:
                 break
             }
@@ -40,6 +47,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         // BGTaskScheduler handlers must be registered before launch completes.
         BackgroundTaskService.shared.registerHandlers()
+        // Likewise the Transaction.updates listener: unfinished transactions are delivered once,
+        // shortly after launch, and are lost if nothing is listening. That is how an offer code
+        // redeemed in the App Store reaches the app at all.
+        PurchaseStore.shared.start()
         return true
     }
 }

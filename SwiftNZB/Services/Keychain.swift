@@ -2,21 +2,27 @@
 //  Keychain.swift
 //  SwiftNZB
 //
-//  Thin wrapper over the Security framework for storing server passwords. Entries are marked
-//  synchronizable so they ride along with iCloud Keychain (matching the iCloud-KVS sync of the
-//  non-secret account metadata in ServerStore).
+//  Thin wrapper over the Security framework for the two things worth storing there: server
+//  passwords and the free-download counter. Entries are marked synchronizable so they ride along
+//  with iCloud Keychain (matching the iCloud-KVS sync of the non-secret account metadata in
+//  ServerStore).
+//
+//  The `service` parameter keeps the two uses in separate namespaces, so a counter key can never
+//  collide with a server account's UUID.
 //
 
 import Foundation
 import Security
 
 enum Keychain {
-    private static let service = "de.valentinlehmann.swiftnzb.serverpassword"
+    static let serverPasswordService = "de.valentinlehmann.swiftnzb.serverpassword"
+    static let entitlementService = "de.valentinlehmann.swiftnzb.entitlement"
 
-    static func setPassword(_ password: String, for account: String) {
+    static func setPassword(_ password: String, for account: String,
+                            service: String = serverPasswordService) {
         let data = Data(password.utf8)
-        // Replace any existing item.
-        deletePassword(for: account)
+        // Replace any existing item — from the same service, or the add below fails as a duplicate.
+        deletePassword(for: account, service: service)
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -28,7 +34,8 @@ enum Keychain {
         SecItemAdd(query as CFDictionary, nil)
     }
 
-    static func password(for account: String) -> String? {
+    static func password(for account: String,
+                         service: String = serverPasswordService) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -43,7 +50,8 @@ enum Keychain {
         return String(data: data, encoding: .utf8)
     }
 
-    static func deletePassword(for account: String) {
+    static func deletePassword(for account: String,
+                               service: String = serverPasswordService) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,

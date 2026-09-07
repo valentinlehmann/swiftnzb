@@ -16,12 +16,20 @@ final class ImportCoordinator {
 
     var pendingJob: DownloadJob?
     var isPresentingConfirm = false
+    var isPresentingPaywall = false
     var errorMessage: String?
     var isPresentingError = false
 
     private init() {}
 
     func handle(url: URL) {
+        // Asked once, here. This is where all four ingress paths meet, and it is before
+        // NZBImporter copies the .nzb into the app's nzb folder — refusing any later would leave
+        // an orphan file in Documents that nothing ever cleans up.
+        guard Entitlements.shared.canAddDownload else {
+            isPresentingPaywall = true
+            return
+        }
         do {
             pendingJob = try NZBImporter.shared.importNZB(at: url)
             isPresentingConfirm = true
@@ -52,4 +60,8 @@ final class ImportCoordinator {
         pendingJob = nil
         isPresentingConfirm = false
     }
+
+    /// Deliberately no re-check in `confirm`: the gate already ran before the sheet opened. If
+    /// other jobs finish while the sheet sits open the queue can end up one past the limit, which
+    /// is bounded at one (there is a single `pendingJob`) and favours the customer.
 }

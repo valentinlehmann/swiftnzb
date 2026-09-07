@@ -11,6 +11,8 @@ struct QueueView: View {
     @State private var router = AppRouter.shared
     @State private var isImporting = false
     @State private var cancelCandidate: DownloadJob?
+    @State private var entitlements = Entitlements.shared
+    @State private var showingPaywall = false
 
     private var nzbTypes: [UTType] {
         [UTType("de.valentinlehmann.swiftnzb.nzb"), UTType(filenameExtension: "nzb"), .xml]
@@ -35,8 +37,13 @@ struct QueueView: View {
                 list
             }
         }
-        .overlay(alignment: .bottom) { completionBanner }
+        .overlay(alignment: .bottom) { bottomBanner }
         .animation(.default, value: manager.recentlyCompletedJobID)
+        .animation(.default, value: entitlements.freeDownloadsRemaining)
+        .sheet(isPresented: $showingPaywall) {
+            NavigationStack { PaywallView(isModal: true) }
+                .presentationSizing(.form)
+        }
         .navigationTitle("Queue")
         .navigationDestination(for: UUID.self) { JobDetailView(jobID: $0) }
         .toolbar { toolbar }
@@ -77,10 +84,67 @@ struct QueueView: View {
         ContentUnavailableView {
             Label("No Downloads", systemImage: "tray.and.arrow.down")
         } description: {
-            Text("Import an NZB file to start downloading. Finished ones appear under Downloads.")
+            if isOutOfFreeDownloads {
+                Text("You have used your 10 free downloads. SwiftNZB Pro removes the limit — everything you already downloaded stays where it is.")
+            } else {
+                Text("Import an NZB file to start downloading. Finished ones appear under Downloads.")
+            }
         } actions: {
-            Button("Add NZB") { presentImporter() }
-                .buttonStyle(.glassProminent)
+            if isOutOfFreeDownloads {
+                // Straight to the offer. Sending them through the file picker first, only to be
+                // refused by the import gate, wastes a trip.
+                Button("SwiftNZB Pro") { showingPaywall = true }
+                    .buttonStyle(.glassProminent)
+            } else {
+                Button("Add NZB") { presentImporter() }
+                    .buttonStyle(.glassProminent)
+            }
+        }
+    }
+
+    private var isOutOfFreeDownloads: Bool {
+        !entitlements.isPro && entitlements.freeDownloadsRemaining == 0
+    }
+
+    /// One bottom overlay for both banners, in priority order — a finished download is the more
+    /// urgent thing to say, and two floating cards must never stack on top of each other.
+    @ViewBuilder
+    private var bottomBanner: some View {
+        if manager.recentlyCompletedJobID != nil {
+            completionBanner
+        } else {
+            freeTierBanner
+        }
+    }
+
+    /// Only appears at the very end of the free tier, and only while there is a queue to look at.
+    /// Before that the count lives in Settings and nothing interrupts.
+    @ViewBuilder
+    private var freeTierBanner: some View {
+        if !entitlements.isPro, entitlements.freeDownloadsRemaining <= 2, !manager.queueJobs.isEmpty {
+            Button {
+                showingPaywall = true
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "sparkles")
+                        .foregroundStyle(Color.accentColor)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("^[\(entitlements.freeDownloadsRemaining) free download](inflect: true) left")
+                            .font(.subheadline.weight(.medium))
+                        Text("SwiftNZB Pro removes the limit")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .glassEffect(.regular, in: .rect(cornerRadius: 18))
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 12)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
         }
     }
 
