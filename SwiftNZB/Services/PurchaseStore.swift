@@ -46,6 +46,14 @@ final class PurchaseStore {
     private(set) var isPurchasing = false
     /// nil while free, and also while grandfathered — nothing was purchased in that case.
     private(set) var activeProductID: String?
+    /// True while an auto-renewable is live, even when Lifetime is what actually grants Pro.
+    ///
+    /// A subscription group holds auto-renewables only, so the Lifetime non-consumable sits
+    /// outside it and there is no upgrade path between them. Someone who subscribes and then buys
+    /// Lifetime keeps being billed until they cancel, and nothing in StoreKit cancels it for them.
+    /// Tracking this separately is what keeps the Manage Subscription row reachable in exactly
+    /// that case.
+    private(set) var hasActiveSubscription = false
     /// Renewal or expiry date of an active subscription, when there is one.
     private(set) var activeExpirationDate: Date?
     private(set) var isGrandfathered: Bool
@@ -130,19 +138,24 @@ final class PurchaseStore {
         // refunded or revoked — so one pass covers monthly, yearly and lifetime alike. A
         // family-shared entitlement arrives here like any other and is deliberately treated as
         // plain Pro.
+        var subscribed = false
         for await result in Transaction.currentEntitlements {
             // Only verified transactions grant anything. Matching on product id alone would let an
             // unverified transaction unlock the app.
             guard case let .verified(transaction) = result,
-                  ProductID(rawValue: transaction.productID) != nil else { continue }
+                  let id = ProductID(rawValue: transaction.productID) else { continue }
+            if id.isSubscription { subscribed = true }
             // Prefer a lifetime purchase if the customer somehow holds both.
-            if found == nil || transaction.productID == ProductID.lifetime.rawValue {
+            if found == nil || id == .lifetime {
                 found = transaction
             }
         }
+        hasActiveSubscription = subscribed
 
         if let found {
             activeProductID = found.productID
+            // A non-consumable has no expiry. Keep the subscription's date when Lifetime is what
+            // won the slot, so the Pro screen can still say when the redundant billing stops.
             activeExpirationDate = found.expirationDate
             setPro(true)
         } else if isGrandfathered {

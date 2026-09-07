@@ -237,19 +237,31 @@ struct PaywallView: View {
                 StatRow("Valid Until", expires.formatted(date: .abbreviated, time: .omitted))
             }
         } footer: {
-            Text(purchases.isGrandfathered
-                 ? "You installed SwiftNZB before it had a purchase, so Pro is yours for good. There is nothing to renew and nothing to cancel."
-                 : "Thanks. Downloads are unlimited on every device signed in to your Apple Account.")
+            Text(activeFooter)
         }
+    }
+
+    private var activeFooter: LocalizedStringKey {
+        if purchases.isGrandfathered {
+            return "You installed SwiftNZB before it had a purchase, so Pro is yours for good. There is nothing to renew and nothing to cancel."
+        }
+        // Lifetime does not cancel a subscription. Nothing in StoreKit does, so say so plainly
+        // rather than letting someone pay twice for the same thing.
+        if purchases.activeProduct == .lifetime, purchases.hasActiveSubscription {
+            return "Lifetime is yours for good. Your subscription is still active and still billing, so cancel it under Manage Subscription."
+        }
+        return "Thanks. Downloads are unlimited on every device signed in to your Apple Account."
     }
 
     // MARK: - Actions
 
     private var actionsSection: some View {
         Section {
-            // Only a real subscription has anything to manage. A grandfathered customer has no
-            // subscription, so the row would lead nowhere.
-            if purchases.activeProduct?.isSubscription == true {
+            // Keyed on whether a subscription is live, not on which product granted Pro. Someone
+            // who subscribed and then bought Lifetime still has billing to cancel, and this is the
+            // only place they can reach it. A grandfathered customer has no subscription, so the
+            // row correctly stays hidden for them.
+            if purchases.hasActiveSubscription {
                 Button {
                     isManagingSubscription = true
                 } label: {
