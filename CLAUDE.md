@@ -82,6 +82,58 @@ SwiftNZBWidgets/             Live Activity (WidgetKit)
   introduce `par2cmdline`/`libpar2` or any GPL code — GPL is incompatible with App Store
   distribution. UnRAR (via the `Unrar.swift` SPM dependency) IS acceptable for the App Store.
 
+### Purchases / Pro entitlement (CRITICAL — money path)
+
+- **StoreKit 2 only, no server.** One entitlement ("Pro"), three products (monthly, yearly,
+  lifetime) in `PurchaseStore`. Prices come from `product.displayPrice` — never hardcode a price,
+  in the UI or in metadata. Nothing but StoreKit may unlock Pro: no licence keys, no codes of our
+  own (Guideline 3.1.1). Coupons are Apple **offer codes**.
+- **A free slot is consumed when a job reaches `.completed`**, on the one line beside the existing
+  `ServerUsageStore.record(...)` call in `DownloadManager.runPostProcessing`. Never hook the
+  counter to `startJob`/`startNextIfNeeded` (pause is cancel-then-rerun, so those fire many times
+  per download) and never to `resume(_:)` (a `.failed` job resumed from History is a retry of the
+  same download). Consumption is keyed by job id and idempotent.
+- **The counter is not derivable from history.** `jobs.v1.json` is renamed and treated as empty
+  when corrupt, and `pruneHistory()` drops old jobs. It lives in `Entitlements` as a grow-only set
+  of job ids in iCloud KVS + UserDefaults + the synchronizable Keychain, read as the **union** of
+  all three. Do NOT copy `ServerStore.load()`'s `kvs.data ?? defaults.data` shape — that is
+  whole-blob last-writer-wins and silently discards local truth. An empty or failed read must
+  never mean "limit reached".
+- **The gate is asked once**, at the top of `ImportCoordinator.handle(url:)` — before
+  `NZBImporter` copies the .nzb into Documents, and where all four ingress paths converge. Never
+  gate resume, retry, pause, cancel, `extractAgain`, the App Intents, history or settings. The
+  Lock Screen intents run where no paywall can present, so a gate there would silently do nothing.
+- **Grandfathering** = leading integer of `AppTransaction.originalAppVersion` (the original
+  **CFBundleVersion**) `< Grandfathering.paywallCutoffBuild`, and only when
+  `AppTransaction.environment == .production`. Every build shipped before this feature carried
+  CFBundleVersion `1`; sandbox, TestFlight and Xcode all report `"1.0"`, so without the
+  environment gate every tester and reviewer looks grandfathered and the purchases are untestable.
+  A parse failure is NOT grandfathered. An unavailable `AppTransaction` (offline first launch) is
+  "unknown, retry next launch" — only positives are ever cached, and `AppTransaction.refresh()` is
+  never called at launch (it prompts for Apple Account credentials).
+- **`paywallCutoffBuild` is `2`, pinned to the real released build, not a date.** Every version
+  released before the paywall shipped as CFBundleVersion `1` (both plists pinned that literal until
+  the 1.1.0 fix), and the boundary is exclusive, so `2` grandfathers build 1 and nothing else. A
+  date-based cutoff would have needed an upload freeze; this does not, because every future upload
+  carries a 12-digit fastlane timestamp far above `2`, and build `1` can never be uploaded again
+  (App Store Connect rejects duplicate build numbers). It lives in `Packages/PurchasePolicy` so a
+  test pins it.
+- **An unresolved purchase state is not Pro.** `Entitlement.unknown` falls back to the free
+  counter; treating it as Pro would unlock the app by turning off Wi-Fi. The cached-positive bool
+  read synchronously in `PurchaseStore.init` exists so a cold launch via `.onOpenURL` and an app
+  update do not flash a paywall at someone who already paid.
+- **`Transaction.updates` is started from `AppDelegate`,** not a `.task`: unfinished transactions
+  arrive once shortly after launch and are lost otherwise, and `.task` re-fires per iPad window.
+  It is also the only way an offer code redeemed outside the app reaches us — the redemption sheet
+  hands back no transaction.
+- **The paywall must stay reachable from Settings at all times** (Guideline 2.1(b) — App Review
+  has to find the purchases), and from `OnboardingView`'s toolbar before a server exists, since
+  that screen has no tab bar.
+- The widget must never learn about any of this: `DownloadActivityAttributes` stays
+  dependency-free, and `SwiftNZBWidgets` links neither `PurchasePolicy` nor StoreKit.
+- Pure policy (slot arithmetic, the cutoff comparison) lives in `Packages/PurchasePolicy` so
+  `swift test` covers it. See `docs/AppStoreReview.md` § 9 Monetization.
+
 ## Conventions (carried from iobs)
 
 - One `@Observable` view model per screen, created `@State private var viewModel = …()`.
@@ -137,6 +189,13 @@ SwiftNZBWidgets/             Live Activity (WidgetKit)
   NZB. PAR2/unrar are generic file utilities. NZB/Usenet apps draw heightened scrutiny; keep the
   framing as a generic NNTP protocol client (see `docs/AppStoreReview.md` for the full strategy,
   demo-account/demo-NZB plan, and rejection playbook, plus listing texts in `fastlane/metadata/`).
+- **In-app purchase needs no entitlement** and no App ID capability change, so adding it does not
+  mean re-running `match`. IAP products are configured by hand in App Store Connect (fastlane has
+  no action for them) and the **first** IAP submission must ride an app version —
+  `precheck_include_in_app_purchases` stays `false` because precheck cannot read IAPs under
+  API-key auth. `SwiftNZB.storekit` at the repo root is wired to the scheme declaratively via
+  `scheme: storeKitConfiguration:` in `project.yml`; doing it in Xcode's scheme editor does not
+  survive `xcodegen generate`.
 - **Privacy manifests**: both targets ship a `PrivacyInfo.xcprivacy` (app: UserDefaults CA92.1,
   file timestamps C617.1, disk space E174.1; widget: none). Data-not-collected, no tracking.
 

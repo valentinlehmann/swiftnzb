@@ -524,6 +524,10 @@ final class DownloadManager {
         if let serverID = server(for: job)?.id {
             ServerUsageStore.shared.record(serverID: serverID, bytes: job.totalBytes)
         }
+        // A free download is spent here and nowhere else. Not in startJob/startNextIfNeeded (pause
+        // is cancel-then-rerun, so those fire many times per download) and not in resume (a failed
+        // job retried from History is the same download, not a new one). Idempotent per job id.
+        Entitlements.shared.recordCompletedDownload(jobID)
         activeJobID = nil
         recentlyCompletedJobID = jobID
         haptic(.success)

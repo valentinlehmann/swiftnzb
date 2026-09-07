@@ -15,6 +15,8 @@ packages:
     path: Packages/DownloadEngine
   PAR2Kit:
     path: Packages/PAR2Kit
+  PurchasePolicy:
+    path: Packages/PurchasePolicy
   Unrar:
     url: https://github.com/mtgto/Unrar.swift
     from: 0.5.3
@@ -31,11 +33,25 @@ targets:
         buildPhase: resources
       - path: AppIcon.icon
         buildPhase: resources
-    scheme: {}
+      # buildPhase: none puts the file in the Project navigator (so Xcode's StoreKit editor is
+      # reachable by clicking it) without adding it to any build phase — it must not ship in the
+      # app, and it must stay out of SwiftNZB/, which is globbed wholesale above.
+      - path: SwiftNZB.storekit
+        buildPhase: none
+    scheme:
+      # Flat key, not nested under `run:` — the target-level scheme shorthand has no run action and
+      # would silently drop it. The value is repo-root-relative (XcodeGen prepends the default
+      # schemePathPrefix "../../"). Doing this in Xcode's scheme editor instead does not survive
+      # `xcodegen generate`. Verify after generating:
+      #   grep StoreKitConfigurationFileReference \
+      #     SwiftNZB.xcodeproj/xcshareddata/xcschemes/SwiftNZB.xcscheme
+      storeKitConfiguration: SwiftNZB.storekit
     dependencies:
       - target: SwiftNZBWidgets
       - package: DownloadEngine
       - package: PAR2Kit
+      # App target only. The widget must stay dependency-free.
+      - package: PurchasePolicy
       - package: Unrar
     settings:
       base:

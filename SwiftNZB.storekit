@@ -1,0 +1,88 @@
+{
+  "identifier" : "6F3A1C40",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "29.99",
+      "familyShareable" : true,
+      "internalID" : "770001",
+      "localizations" : [
+        {
+          "description" : "Unlimited downloads, as a one-time purchase.",
+          "displayName" : "SwiftNZB Pro Lifetime",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "de.valentinlehmann.swiftnzb.pro.lifetime",
+      "referenceName" : "Pro Lifetime",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_askToBuyEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_storeKitErrors" : []
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21500001",
+      "localizations" : [
+        {
+          "description" : "Unlimited downloads",
+          "displayName" : "SwiftNZB Pro",
+          "locale" : "en_US"
+        }
+      ],
+      "name" : "SwiftNZB Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "9.99",
+          "familyShareable" : true,
+          "groupNumber" : 1,
+          "internalID" : "770002",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlimited downloads, billed yearly.",
+              "displayName" : "SwiftNZB Pro Yearly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "de.valentinlehmann.swiftnzb.pro.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Pro Yearly",
+          "subscriptionGroupID" : "21500001",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "1.99",
+          "familyShareable" : true,
+          "groupNumber" : 2,
+          "internalID" : "770003",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlimited downloads, billed monthly.",
+              "displayName" : "SwiftNZB Pro Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "de.valentinlehmann.swiftnzb.pro.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Pro Monthly",
+          "subscriptionGroupID" : "21500001",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}
