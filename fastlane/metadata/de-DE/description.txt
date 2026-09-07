@@ -21,7 +21,13 @@ AUF iOS
 • Server-Einstellungen synchronisieren über iCloud, Passwörter bleiben im Schlüsselbund
 • Keine Werbung, kein Tracking, keine Konten. Die App spricht mit dem Server, den du einrichtest, und mit keinem anderen
 
+WAS ES KOSTET
+Die ersten 10 Downloads sind kostenlos. Danach braucht ein neuer Download SwiftNZB Pro, das unbegrenzte Downloads freischaltet: monatlich, jährlich oder einmalig auf Dauer. Die aktuellen Preise stehen in der App. Wer SwiftNZB vor dieser Version installiert hat, behält unbegrenzte Downloads dauerhaft.
+
 DATENSCHUTZ
 SwiftNZB sammelt keine Daten. Deine Zugangsdaten liegen im System-Schlüsselbund. Downloads laufen über deinen eigenen Provider, ein Server des Entwicklers ist nirgends beteiligt.
 
 SwiftNZB braucht ein Konto bei einem Usenet-Provider. Lade nur herunter, wozu du berechtigt bist.
+
+Nutzungsbedingungen: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Datenschutz: https://valentinlehmann.github.io/swiftnzb/privacy/

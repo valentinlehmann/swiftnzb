@@ -1,3 +1,7 @@
+SwiftNZB is now free for the first 10 downloads. After that, SwiftNZB Pro unlocks unlimited downloads — monthly, yearly, or a one-time purchase. The same screen restores a purchase and redeems a code.
+
+If you installed SwiftNZB before this update, nothing changes for you: your downloads stay unlimited, for good.
+
 The screen now stays awake while a download runs, so it keeps going when you set the device down. You can turn that off under Settings, Background.
 
 A notification tells you when a download finishes or fails while you are in another app.
