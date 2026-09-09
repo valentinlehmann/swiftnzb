@@ -1,15 +1,1 @@
-SwiftNZB is now free for the first 10 downloads. After that, SwiftNZB Pro unlocks unlimited downloads — monthly, yearly, or a one-time purchase. The same screen restores a purchase and redeems a code.
-
-If you installed SwiftNZB before this update, nothing changes for you: your downloads stay unlimited, for good.
-
-The screen now stays awake while a download runs, so it keeps going when you set the device down. You can turn that off under Settings, Background.
-
-A notification tells you when a download finishes or fails while you are in another app.
-
-A finished download has a Show in Files button that opens its folder.
-
-The Downloads list is searchable by name, and you choose how long finished downloads stay in it.
-
-Siri and Shortcuts can pause the queue, resume it, or say what is downloading.
-
-Fixed: deleting a failed download now also frees the space its half-finished files were using.
+Fixes a bug that asked customers who bought SwiftNZB before it became free to pay again. If you owned the app before the last update, open this version once and your downloads are unlimited again, for good. Nothing to restore and nothing to buy.

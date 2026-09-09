@@ -1,15 +1,1 @@
-SwiftNZB ist jetzt für die ersten 10 Downloads kostenlos. Danach schaltet SwiftNZB Pro unbegrenzte Downloads frei — monatlich, jährlich oder einmalig. Auf demselben Bildschirm lassen sich Käufe wiederherstellen und Codes einlösen.
-
-Wer SwiftNZB vor diesem Update installiert hat, behält unbegrenzte Downloads dauerhaft.
-
-Der Bildschirm bleibt jetzt an, solange ein Download läuft. So läuft er weiter, wenn du das Gerät weglegst. Abschalten kannst du das unter Einstellungen, Hintergrund.
-
-Eine Mitteilung sagt dir, wenn ein Download fertig ist oder fehlschlägt, während du gerade woanders bist.
-
-Fertige Downloads haben einen Knopf, der ihren Ordner in der Dateien-App öffnet.
-
-Die Download-Liste lässt sich nach Namen durchsuchen, und du legst fest, wie lange fertige Downloads darin bleiben.
-
-Siri und Kurzbefehle können die Warteschlange pausieren, fortsetzen und ansagen, was gerade läuft.
-
-Behoben: Wer einen fehlgeschlagenen Download löscht, bekommt jetzt auch den Platz zurück, den dessen halbe Dateien belegt haben.
+Behebt einen Fehler, der Käufer der App zur Zahlung aufforderte, obwohl sie SwiftNZB vor der Umstellung auf kostenlos gekauft hatten. Wer die App vor dem letzten Update besessen hat, öffnet diese Version einmal und hat wieder dauerhaft unbegrenzte Downloads. Nichts wiederherstellen, nichts kaufen.

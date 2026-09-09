@@ -48,25 +48,32 @@ struct GrandfatheringTests {
     private let cutoff = 202610010000
 
     /// The one that decides whether every existing customer keeps Pro or gets billed.
-    @Test func theShippingCutoffGrandfathersTheReleasedBuildAndNothingElse() {
+    ///
+    /// These are the real CFBundleVersions the App Store served, read off App Store Connect. A
+    /// cutoff derived from the committed Info.plists instead was `2`, which grandfathered nobody:
+    /// `agvtool new-version -all` rewrites those plists during the fastlane lane, so every
+    /// uploaded build carried a timestamp and no customer has ever reported `originalAppVersion`
+    /// "1". That is what these literals are here to stop happening again.
+    @Test func theShippingCutoffGrandfathersEveryReleasedBuildAndNothingElse() {
         let real = Grandfathering.paywallCutoffBuild
-        // Every version released before the paywall shipped as CFBundleVersion "1".
+        // 1.0 and 1.0.1 — the two paid-app builds. Every customer owed a grant reports one of them.
         #expect(Grandfathering.isGrandfathered(
-            originalAppVersion: "1", cutoffBuild: real, isProduction: true))
-        // The boundary is exclusive, so a cutoff equal to the released build would grandfather
-        // nobody. This is the off-by-one that pins the constant at 2 rather than 1.
+            originalAppVersion: "202607020045", cutoffBuild: real, isProduction: true))
+        #expect(Grandfathering.isGrandfathered(
+            originalAppVersion: "202608220021", cutoffBuild: real, isProduction: true))
+        // The boundary is exclusive, so the paywall build itself buys nothing: someone whose first
+        // download was 1.1.0 never paid for the app and is not grandfathered.
         #expect(!Grandfathering.isGrandfathered(
-            originalAppVersion: "1", cutoffBuild: 1, isProduction: true))
-        #expect(real > 1)
-        // Every later upload carries a 12-digit fastlane timestamp, far above the cutoff, so no
-        // future build can grandfather its installers.
+            originalAppVersion: "202609072335", cutoffBuild: real, isProduction: true))
+        #expect(real == 202609072335)
+        // Every later upload carries a larger timestamp, so no future build grandfathers its own
+        // installers. A 12-digit build also has to survive being an Int — it overflows Int32.
         #expect(!Grandfathering.isGrandfathered(
-            originalAppVersion: "202610010000", cutoffBuild: real, isProduction: true))
+            originalAppVersion: "202612251200", cutoffBuild: real, isProduction: true))
+        #expect(real > Int(Int32.max))
+        // ...and no released build counts outside production.
         #expect(!Grandfathering.isGrandfathered(
-            originalAppVersion: "2", cutoffBuild: real, isProduction: true))
-        // ...and not even the released build counts outside production.
-        #expect(!Grandfathering.isGrandfathered(
-            originalAppVersion: "1", cutoffBuild: real, isProduction: false))
+            originalAppVersion: "202607020045", cutoffBuild: real, isProduction: false))
     }
 
     @Test func timestampBuildsCompareAgainstTheCutoff() {

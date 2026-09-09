@@ -45,25 +45,34 @@ public enum FreeTier {
 /// Deciding whether a customer installed the app before it had a paywall, and therefore keeps
 /// unlimited downloads at no charge.
 public enum Grandfathering {
-    /// Builds below this keep Pro for good.
+    /// Builds below this keep Pro for good. This is the CFBundleVersion of the paywall build
+    /// itself, and the boundary is exclusive, so everything released before it is grandfathered.
     ///
-    /// Every version released before the paywall shipped as CFBundleVersion **`1`**: both
-    /// Info.plists pinned that literal until the 1.1.0 build-number fix, so as the commit that
-    /// fixed it puts it, "every upload arrived as build 1". The boundary is exclusive, so `2` is
-    /// the value that grandfathers build 1 and nothing else.
+    /// Read off App Store Connect rather than inferred from the plists, because inferring it got
+    /// this wrong once and locked out every paying customer. The three released builds are:
     ///
-    /// Pinning it to the real released build rather than a date is what makes this safe. Every
-    /// future upload carries a 12-digit fastlane timestamp (`%Y%m%d%H%M`), which is far above this,
-    /// so no later build can accidentally grandfather its installers — and build `1` can never be
-    /// uploaded again, because App Store Connect rejects a duplicate build number.
-    public static let paywallCutoffBuild = 2
+    ///     1.0     202607020045   (released 2026-08-20, paid app)
+    ///     1.0.1   202608220021   (paid app)
+    ///     1.1.0   202609072335   (released 2026-09-08, the paywall)
+    ///
+    /// The committed Info.plists pinned CFBundleVersion to the literal `1` until the 1.1.0 fix,
+    /// which is where the earlier cutoff of `2` came from — but `agvtool new-version -all`, which
+    /// `update_build_number` drives, rewrites those plists on disk during the lane, so the literal
+    /// never reached an uploaded binary. Every build the App Store ever served carried a 12-digit
+    /// fastlane timestamp, `originalAppVersion` is one of the two above for every pre-paywall
+    /// customer, and a cutoff of `2` therefore grandfathered nobody.
+    ///
+    /// Still safe against future uploads: every later build carries a larger timestamp, so no
+    /// future build can grandfather its own installers.
+    public static let paywallCutoffBuild = 202609072335
 
     /// The leading run of digits in `AppTransaction.originalAppVersion`, as a number.
     ///
-    /// On iOS that property is the original **CFBundleVersion**, not the marketing version. Three
-    /// shapes reach here: `"1"` (every App Store build shipped before the build-number fix pinned
-    /// the literal), a 12-digit fastlane upload timestamp (`%Y%m%d%H%M`), and `"1.0"` (what the
-    /// sandbox, TestFlight and Xcode environments always report).
+    /// On iOS that property is the original **CFBundleVersion**, not the marketing version. Two
+    /// shapes reach here in practice: a 12-digit fastlane upload timestamp (`%Y%m%d%H%M`), which is
+    /// what every build the App Store has ever served carried, and `"1.0"` (what the sandbox,
+    /// TestFlight and Xcode environments always report). `"1"` is handled but has never been seen:
+    /// the literal the plists once pinned never survived `agvtool` into an upload.
     ///
     /// Deliberately not `Int(v)` — that rejects `"1.0"` outright — and deliberately not
     /// `Int(v.filter(\.isNumber))`, which turns `"1.0"` into 10 and would sneak under any cutoff.

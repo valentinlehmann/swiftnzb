@@ -105,19 +105,21 @@ SwiftNZBWidgets/             Live Activity (WidgetKit)
   Lock Screen intents run where no paywall can present, so a gate there would silently do nothing.
 - **Grandfathering** = leading integer of `AppTransaction.originalAppVersion` (the original
   **CFBundleVersion**) `< Grandfathering.paywallCutoffBuild`, and only when
-  `AppTransaction.environment == .production`. Every build shipped before this feature carried
-  CFBundleVersion `1`; sandbox, TestFlight and Xcode all report `"1.0"`, so without the
-  environment gate every tester and reviewer looks grandfathered and the purchases are untestable.
+  `AppTransaction.environment == .production`. Sandbox, TestFlight and Xcode all report `"1.0"`,
+  which parses to 1 and sits below any cutoff, so without the environment gate every tester and
+  reviewer looks grandfathered and the purchases are untestable.
   A parse failure is NOT grandfathered. An unavailable `AppTransaction` (offline first launch) is
   "unknown, retry next launch" — only positives are ever cached, and `AppTransaction.refresh()` is
   never called at launch (it prompts for Apple Account credentials).
-- **`paywallCutoffBuild` is `2`, pinned to the real released build, not a date.** Every version
-  released before the paywall shipped as CFBundleVersion `1` (both plists pinned that literal until
-  the 1.1.0 fix), and the boundary is exclusive, so `2` grandfathers build 1 and nothing else. A
-  date-based cutoff would have needed an upload freeze; this does not, because every future upload
-  carries a 12-digit fastlane timestamp far above `2`, and build `1` can never be uploaded again
-  (App Store Connect rejects duplicate build numbers). It lives in `Packages/PurchasePolicy` so a
-  test pins it.
+- **`paywallCutoffBuild` is `202609072335` — the paywall build's own CFBundleVersion, read off App
+  Store Connect.** Never infer it from the Info.plists. They pinned the literal `1` until the 1.1.0
+  fix, but `agvtool new-version -all` (which `update_build_number` drives) rewrites them on disk
+  during the lane, so every build the App Store served carried a fastlane timestamp: 1.0 was
+  `202607020045`, 1.0.1 `202608220021`, the paywall `202609072335`. A cutoff of `2` derived from
+  those plists shipped in 1.1.0 and grandfathered **nobody** — every paying customer was locked out
+  until 1.1.1. The boundary is exclusive, so the paywall build itself grants nothing, and future
+  builds carry larger timestamps. Confirm released build numbers with
+  `scripts/lookup_order.py --builds`; a test in `Packages/PurchasePolicy` pins the three literals.
 - **An unresolved purchase state is not Pro.** `Entitlement.unknown` falls back to the free
   counter; treating it as Pro would unlock the app by turning off Wi-Fi. The cached-positive bool
   read synchronously in `PurchaseStore.init` exists so a cold launch via `.onOpenURL` and an app

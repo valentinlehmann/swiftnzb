@@ -302,22 +302,33 @@ Pro for good, decided on device from the Apple-signed app transaction — no ser
 is the leading integer of `AppTransaction.originalAppVersion` (which on iOS is the original
 **CFBundleVersion**) against `Grandfathering.paywallCutoffBuild`, and **only** when
 `AppTransaction.environment == .production`. Every build shipped before this feature carried
-CFBundleVersion `1`; sandbox, TestFlight and Xcode all report `"1.0"`, so without the environment
-gate every tester and every reviewer would look grandfathered and the purchases would be
-untestable — a 2.1(b) rejection.
+a CFBundleVersion below the paywall build's; sandbox, TestFlight and Xcode all report `"1.0"`,
+which parses to 1 and sits below any cutoff, so without the environment gate every tester and every
+reviewer would look grandfathered and the purchases would be untestable — a 2.1(b) rejection.
 
-`paywallCutoffBuild` is **`2`**, pinned to the build that is actually live rather than to a date.
-Every version released before the paywall shipped as CFBundleVersion `1` — both Info.plists pinned
-that literal until the 1.1.0 build-number fix, so as that commit puts it, "every upload arrived as
-build 1". The comparison is exclusive, so `2` grandfathers build 1 and nothing later. Note the
-off-by-one: setting the constant to `1`, the released build number itself, would grandfather
-nobody.
+`paywallCutoffBuild` is **`202609072335`**, the paywall build's own CFBundleVersion, read off App
+Store Connect. The comparison is exclusive, so the two paid-app builds are grandfathered and the
+paywall build itself is not:
 
-Pinning it this way removes an operational rule rather than adding one. A date-based cutoff would
-have meant no paywall-free build could ever be uploaded after that instant. With `2` there is
-nothing to freeze: every future upload carries a 12-digit fastlane timestamp far above it, and
-build `1` cannot be uploaded again because App Store Connect rejects a duplicate build number. The
-constant lives in `Packages/PurchasePolicy` and a test pins it, so it cannot drift unnoticed.
+| Version | CFBundleVersion | Notes |
+|---|---|---|
+| 1.0 | `202607020045` | released 2026-08-20, paid app |
+| 1.0.1 | `202608220021` | paid app |
+| 1.1.0 | `202609072335` | released 2026-09-08, the paywall |
+
+**1.1.0 shipped this constant as `2` and grandfathered nobody.** The value was inferred from the
+committed Info.plists, which pinned CFBundleVersion to the literal `1` until the 1.1.0 build-number
+fix. That inference was wrong: `agvtool new-version -all`, which `update_build_number` drives,
+rewrites those plists on disk during the lane, so the literal never reached an uploaded binary and
+every build the App Store served carried a fastlane timestamp. `originalAppVersion` is therefore a
+12-digit number for every real customer, always far above `2`, and every person who paid for the
+app saw a paywall until 1.1.1 fixed it. Read released build numbers from App Store Connect
+(`scripts/lookup_order.py --builds`) — never from the plists.
+
+Pinning it to a build still removes an operational rule rather than adding one: a date-based cutoff
+would have meant no paywall-free build could ever be uploaded after that instant, whereas every
+future upload carries a larger timestamp automatically. The constant lives in
+`Packages/PurchasePolicy` and a test pins all three literals, so it cannot drift unnoticed.
 
 **Required paywall disclosures** (Guideline 3.1.2(c), which points at Schedule 2 §3.8(b) of the
 developer agreement, plus Apple's auto-renewable-subscriptions page): plan name, duration, what
