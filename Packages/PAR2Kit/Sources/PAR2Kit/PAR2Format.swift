@@ -24,6 +24,18 @@ private extension Array where Element == UInt8 {
     }
 }
 
+private extension UnsafeRawBufferPointer {
+    func u32LE(_ offset: Int) -> UInt32 {
+        UInt32(self[offset]) | UInt32(self[offset + 1]) << 8 |
+        UInt32(self[offset + 2]) << 16 | UInt32(self[offset + 3]) << 24
+    }
+    func u64LE(_ offset: Int) -> UInt64 {
+        var v: UInt64 = 0
+        for i in 0..<8 { v |= UInt64(self[offset + i]) << (8 * i) }
+        return v
+    }
+}
+
 // MARK: - Packets
 
 enum PAR2PacketType {
@@ -33,7 +45,8 @@ enum PAR2PacketType {
 struct PAR2Packet {
     let type: PAR2PacketType
     let recoverySetID: [UInt8]   // 16 bytes
-    let body: [UInt8]
+    let body: [UInt8]            // empty for .recoverySlice — see `slice`
+    let slice: PAR2RecoverySlice?
 }
 
 enum PAR2Parser {
@@ -45,39 +58,65 @@ enum PAR2Parser {
     private static let typeRecvSlice: [UInt8] = Array("PAR 2.0\0RecvSlic".utf8)
     private static let typeCreator: [UInt8] = Array("PAR 2.0\0Creator\0".utf8)
 
-    /// Parse all valid packets in a `.par2` file's bytes (MD5-validated). Defends against hostile
+    /// Parse all valid packets in a `.par2` file (MD5-validated). Defends against hostile
     /// input: the packet length is validated as UInt64 (so an absurd value can't trap the
     /// `Int(_:)` conversion or overflow `i + length`) before anything is read.
-    static func parse(_ data: Data) -> [PAR2Packet] {
-        let bytes = [UInt8](data)
+    ///
+    /// Reads through the mapped bytes in place. Copying the file into a `[UInt8]` here is what
+    /// used to get the app killed by iOS: a recovery set for a large release is several GB, and
+    /// every packet was then copied again to hash it. Recovery-slice payloads are recorded as
+    /// locations and never loaded — repair reads only as many as there are missing blocks, and
+    /// checks their MD5 then (a slice that fails it is reported, and repair re-verifies anyway).
+    static func parse(_ data: Data, from url: URL) -> [PAR2Packet] {
         var packets: [PAR2Packet] = []
-        var i = 0
-        let n = bytes.count
+        data.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
+            var i = 0
+            let n = bytes.count
 
-        while i + 64 <= n {
-            // Find the next magic.
-            guard matches(bytes, at: i, magic) else { i += 1; continue }
+            while i + 64 <= n {
+                // Find the next magic.
+                guard matches(bytes, at: i, magic) else { i += 1; continue }
 
-            let len64 = bytes.u64LE(i + 8)
-            // Compare in UInt64 so nothing traps/overflows; only convert once it's known in-range.
-            guard len64 >= 64, len64 % 4 == 0, len64 <= UInt64(n - i) else { i += 1; continue }
-            let length = Int(len64)
+                let len64 = bytes.u64LE(i + 8)
+                // Compare in UInt64 so nothing traps/overflows; only convert once it's known in-range.
+                guard len64 >= 64, len64 % 4 == 0, len64 <= UInt64(n - i) else { i += 1; continue }
+                let length = Int(len64)
+                let type = classify(Array(bytes[(i + 48)..<(i + 64)]))
 
-            let hash = Array(bytes[(i + 16)..<(i + 32)])
-            let signed = Array(bytes[(i + 32)..<(i + length)])   // recoverySetID + type + body
-            let computed = Array(Insecure.MD5.hash(data: Data(signed)))
-            guard hash == computed else { i += 1; continue }
+                // 64 header + 4 exponent, so anything shorter carries no recovery data at all.
+                if type == .recoverySlice {
+                    if length >= 68 {
+                        packets.append(PAR2Packet(
+                            type: type,
+                            recoverySetID: Array(bytes[(i + 32)..<(i + 48)]),
+                            body: [],
+                            slice: PAR2RecoverySlice(
+                                exponent: Int(bytes.u32LE(i + 64)),
+                                url: url,
+                                signedOffset: i + 32,
+                                signedCount: length - 32,
+                                payloadCount: length - 68,
+                                md5: Array(bytes[(i + 16)..<(i + 32)]))))
+                    }
+                    i += length
+                    continue
+                }
 
-            let recoverySetID = Array(bytes[(i + 32)..<(i + 48)])
-            let typeField = Array(bytes[(i + 48)..<(i + 64)])
-            let body = Array(bytes[(i + 64)..<(i + length)])
-            packets.append(PAR2Packet(type: classify(typeField), recoverySetID: recoverySetID, body: body))
-            i += length
+                let hash = Array(bytes[(i + 16)..<(i + 32)])
+                let signed = Data(bytes[(i + 32)..<(i + length)])   // recoverySetID + type + body
+                guard Array(Insecure.MD5.hash(data: signed)) == hash else { i += 1; continue }
+
+                packets.append(PAR2Packet(type: type,
+                                          recoverySetID: Array(bytes[(i + 32)..<(i + 48)]),
+                                          body: Array(bytes[(i + 64)..<(i + length)]),
+                                          slice: nil))
+                i += length
+            }
         }
         return packets
     }
 
-    private static func matches(_ bytes: [UInt8], at offset: Int, _ pattern: [UInt8]) -> Bool {
+    private static func matches(_ bytes: UnsafeRawBufferPointer, at offset: Int, _ pattern: [UInt8]) -> Bool {
         guard offset + pattern.count <= bytes.count else { return false }
         for k in 0..<pattern.count where bytes[offset + k] != pattern[k] { return false }
         return true
@@ -110,9 +149,28 @@ struct PAR2SliceChecksum {
     let crc32: UInt32
 }
 
+/// Where a recovery slice's bytes live, rather than the bytes themselves. A recovery set is
+/// routinely gigabytes; repair needs exactly as many slices as there are missing blocks, and
+/// verification needs none of them, only the count.
 struct PAR2RecoverySlice {
     let exponent: Int
-    let data: [UInt8]
+    let url: URL
+    let signedOffset: Int    // start of the MD5-covered region (recoverySetID + type + body)
+    let signedCount: Int
+    let payloadCount: Int    // recovery bytes: the body, minus its 4-byte exponent
+    let md5: [UInt8]
+
+    /// Read the recovery bytes, checking the packet MD5 the parser deliberately skipped. Nil if
+    /// the file moved, was truncated, or the packet doesn't hash to its own header.
+    func read() -> [UInt8]? {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? handle.close() }
+        guard (try? handle.seek(toOffset: UInt64(signedOffset))) != nil,
+              let signed = try? handle.read(upToCount: signedCount), signed.count == signedCount,
+              Array(Insecure.MD5.hash(data: signed)) == md5
+        else { return nil }
+        return Array(signed.suffix(payloadCount))
+    }
 }
 
 /// A fully-assembled recovery set built from all `.par2` files.
@@ -135,10 +193,12 @@ struct PAR2RecoverySet {
         var seenExponents = Set<Int>()
 
         // Collect every packet across all files first so we can lock onto a single recovery set.
+        // Mapped, not read into memory: the recovery volumes stay on disk, where the only thing
+        // that ever needs them is repair.
         var allPackets: [PAR2Packet] = []
         for url in urls {
-            guard let data = try? Data(contentsOf: url) else { continue }
-            allPackets.append(contentsOf: PAR2Parser.parse(data))
+            guard let data = try? Data(contentsOf: url, options: .mappedIfSafe) else { continue }
+            allPackets.append(contentsOf: PAR2Parser.parse(data, from: url))
         }
 
         // A directory can legitimately hold more than one PAR2 set; merging packets across sets
@@ -161,12 +221,8 @@ struct PAR2RecoverySet {
             case .inputSliceChecksum:
                 parseIFSC(packet.body, into: &set)
             case .recoverySlice:
-                if packet.body.count > 4 {
-                    let exponent = Int(packet.body.u32LE(0))
-                    if seenExponents.insert(exponent).inserted {
-                        set.recoverySlices.append(
-                            PAR2RecoverySlice(exponent: exponent, data: Array(packet.body[4...])))
-                    }
+                if let slice = packet.slice, seenExponents.insert(slice.exponent).inserted {
+                    set.recoverySlices.append(slice)
                 }
             case .creator, .unknown:
                 break
