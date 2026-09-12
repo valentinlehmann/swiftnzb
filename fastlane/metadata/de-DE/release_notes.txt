@@ -1,1 +1,3 @@
-Behebt einen Fehler, der Käufer der App zur Zahlung aufforderte, obwohl sie SwiftNZB vor der Umstellung auf kostenlos gekauft hatten. Wer die App vor dem letzten Update besessen hat, öffnet diese Version einmal und hat wieder dauerhaft unbegrenzte Downloads. Nichts wiederherstellen, nichts kaufen.
+Behebt Abstürze bei großen Downloads während der Überprüfung. Um einen Download anhand seiner PAR2-Dateien zu prüfen, hat SwiftNZB die kompletten Daten auf einmal im Arbeitsspeicher gehalten. Ab ein paar Gigabyte ging der Speicher aus und iOS hat die App ohne Hinweis geschlossen. Die Überprüfung arbeitet die Dateien jetzt in kleinen Teilen ab, egal wie groß der Download ist.
+
+Ein auf diese Weise abgebrochener Download hat sich bisher bei jedem Öffnen der App neu gestartet. Er wartet jetzt unter Downloads mit allen bereits geladenen Daten, sodass das Fortsetzen keinen zweiten Download kostet. Auch ein Abbrechen während der Überprüfung bleibt jetzt erhalten.

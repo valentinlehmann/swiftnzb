@@ -1,1 +1,3 @@
-Fixes a bug that asked customers who bought SwiftNZB before it became free to pay again. If you owned the app before the last update, open this version once and your downloads are unlimited again, for good. Nothing to restore and nothing to buy.
+Fixes large downloads quitting during verification. To check a download against its PAR2 files, SwiftNZB held the whole thing in memory at once. Past a few gigabytes iOS ran out and closed the app without warning. Verification now works through the files in small pieces, however large the download.
+
+A download that stopped this way used to start over every time you opened the app. It now waits under Downloads with everything it had already fetched, so continuing costs no second download. Cancelling during verification also sticks now.
