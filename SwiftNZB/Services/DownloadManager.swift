@@ -69,7 +69,17 @@ final class DownloadManager {
         LiveActivityService.shared.endStaleActivities()   // clear any zombie activity from a prior run
         jobs = JobStore.shared.load()
         for i in jobs.indices where jobs[i].status.isActive {
-            jobs[i].status = .queued   // nothing is actually running on a cold launch
+            if jobs[i].status == .downloading {
+                jobs[i].status = .queued   // nothing is actually running on a cold launch
+            } else {
+                // Died during post-processing. Never restart that automatically: if what killed
+                // the app was the post-processing itself, doing it again on every launch is a
+                // crash loop the user cannot escape, because it starts before the UI they would
+                // cancel it from. Park it in History, where Resume is a deliberate choice. The
+                // .part files stay, so resuming costs no re-download.
+                jobs[i].status = .failed
+                jobs[i].errorMessage = "SwiftNZB stopped unexpectedly while finishing this download. Resume to try again."
+            }
             jobs[i].currentStep = nil
         }
         pruneHistory()
@@ -148,6 +158,11 @@ final class DownloadManager {
         if id == activeJobID {
             activeIntent = .cancel
             updateJob(id) { $0.status = .cancelled }
+            // Write it now rather than leaving it to the engine callback. Post-processing can run
+            // for minutes after the engine is done, and if the app dies in that window an unsaved
+            // cancel is simply lost: the job comes back on the next launch and the user gets to
+            // cancel it again, forever.
+            save()
             cancelEngine()
         } else {
             updateJob(id) { $0.status = .cancelled }

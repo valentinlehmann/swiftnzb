@@ -164,16 +164,22 @@ public final class PAR2Job {
                 defer { try? handle.close() }
                 var fullMD5 = Insecure.MD5()
                 for local in 0..<expected {
-                    let chunk = readFully(handle, count: recoverySet.sliceSize)
-                    fullMD5.update(data: chunk)
-                    var slice = chunk
-                    if slice.count < recoverySet.sliceSize {
-                        slice.append(Data(repeating: 0, count: recoverySet.sliceSize - slice.count))
+                    // One pool per slice. FileHandle is NSFileHandle underneath and hands back
+                    // autoreleased storage, and this loop runs synchronously inside a detached
+                    // task, so without a pool of its own it holds the whole file by the end. That
+                    // is every byte of the download, not just the recovery set.
+                    autoreleasepool {
+                        let chunk = readFully(handle, count: recoverySet.sliceSize)
+                        fullMD5.update(data: chunk)
+                        var slice = chunk
+                        if slice.count < recoverySet.sliceSize {
+                            slice.append(Data(repeating: 0, count: recoverySet.sliceSize - slice.count))
+                        }
+                        let md5 = Array(Insecure.MD5.hash(data: slice))
+                        let isGood = local < checks.count && md5 == checks[local].md5
+                        presence[globalIndex + local] = isGood
+                        if isGood { good += 1 } else { missing += 1 }
                     }
-                    let md5 = Array(Insecure.MD5.hash(data: slice))
-                    let isGood = local < checks.count && md5 == checks[local].md5
-                    presence[globalIndex + local] = isGood
-                    if isGood { good += 1 } else { missing += 1 }
                 }
                 intact = Array(fullMD5.finalize()) == fd.fullMD5
             } else {
@@ -221,17 +227,32 @@ public final class PAR2Job {
         let wordsPerBlock = recoverySet.sliceSize / 2
         let chosen = Array(recoverySet.recoverySlices.prefix(m))
 
-        // RHS starts as the recovery data, then subtract present-block contributions.
-        var rhs: [[UInt16]] = chosen.map { wordsFromBytes($0.data, count: wordsPerBlock) }
+        // RHS starts as the recovery data, then subtract present-block contributions. This is the
+        // only place the recovery bytes are needed, and only `m` slices of them, so they are read
+        // here instead of being held in memory since the set was parsed.
+        var rhs: [[UInt16]] = []
+        rhs.reserveCapacity(m)
+        for slice in chosen {
+            guard let bytes = slice.read() else {
+                return .failed(reason: "A recovery block is unreadable or damaged.")
+            }
+            rhs.append(wordsFromBytes(bytes, count: wordsPerBlock))
+        }
         for gi in presence.indices where presence[gi] {
-            guard let blockWords = readBlockWords(globalIndex: gi, wordsPerBlock: wordsPerBlock) else {
-                return .failed(reason: "Couldn't read a good block while repairing.")
+            // Same pool discipline as verify: this walks every present block, so it reads the
+            // whole payload as well.
+            let read = autoreleasepool { () -> Bool in
+                guard let blockWords = readBlockWords(globalIndex: gi, wordsPerBlock: wordsPerBlock) else {
+                    return false
+                }
+                let lb = baseLogs[gi]
+                for r in 0..<m {
+                    let coeff = GaloisField16.antilog((lb * chosen[r].exponent) % GaloisField16.limit)
+                    ReedSolomon.addScaled(&rhs[r], blockWords, coeff)
+                }
+                return true
             }
-            let lb = baseLogs[gi]
-            for r in 0..<m {
-                let coeff = GaloisField16.antilog((lb * chosen[r].exponent) % GaloisField16.limit)
-                ReedSolomon.addScaled(&rhs[r], blockWords, coeff)
-            }
+            guard read else { return .failed(reason: "Couldn't read a good block while repairing.") }
         }
 
         // Coefficient matrix for the missing columns.
