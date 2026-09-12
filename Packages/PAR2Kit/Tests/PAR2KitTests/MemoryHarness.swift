@@ -115,4 +115,56 @@ struct PAR2MemoryHarness {
         // retained and about twice that at peak.
         #expect(cost < 64 * 1024 * 1024)
     }
+
+    /// Verification reads every byte of the payload, not just the recovery set. `FileHandle.read`
+    /// is NSFileHandle underneath and hands back autoreleased storage, so a long synchronous loop
+    /// with no pool of its own never gives it back.
+    ///
+    ///     PAR2_MEMORY_HARNESS=1 swift test --filter verifiesALargePayloadWithoutHoldingIt
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["PAR2_MEMORY_HARNESS"] != nil))
+    func verifiesALargePayloadWithoutHoldingIt() throws {
+        let megabytes = Int(ProcessInfo.processInfo.environment["PAR2_MEMORY_HARNESS_MB"] ?? "") ?? 1024
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("par2-verify-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        // A payload big enough to matter, described by a par2 set small enough not to.
+        let payloadURL = dir.appendingPathComponent("payload.bin")
+        FileManager.default.createFile(atPath: payloadURL.path, contents: nil)
+        let out = try FileHandle(forWritingTo: payloadURL)
+        let block = Data((0..<chunk).map { UInt8($0 & 0xFF) })
+        for _ in 0..<(megabytes * 1024 * 1024 / chunk) { try out.write(contentsOf: block) }
+        try out.close()
+
+        let setID = [UInt8](repeating: 0xAB, count: 16)
+        let fileID = [UInt8](repeating: 0x11, count: 16)
+        var name = Array("payload.bin".utf8)
+        while name.count % 4 != 0 { name.append(0) }
+        let slices = megabytes * 1024 * 1024 / sliceSize
+
+        var par2 = packet(type: "PAR 2.0\0Main", body: u64(sliceSize) + u32(1) + fileID, setID: setID)
+        par2 += packet(type: "PAR 2.0\0FileDesc",
+                       body: fileID + [UInt8](repeating: 0x22, count: 16)
+                           + [UInt8](repeating: 0x33, count: 16)
+                           + u64(megabytes * 1024 * 1024) + name,
+                       setID: setID)
+        var ifsc = fileID
+        for _ in 0..<slices { ifsc += [UInt8](repeating: 0x44, count: 16) + u32(0) }
+        par2 += packet(type: "PAR 2.0\0IFSC", body: ifsc, setID: setID)
+        let par2URL = dir.appendingPathComponent("recovery.par2")
+        try Data(par2).write(to: par2URL)
+
+        let job = PAR2Job(par2URLs: [par2URL], directory: dir)
+        let before = footprint()
+        let result = job.verify()
+        let cost = footprint() - before
+
+        #expect(result.totalInputSlices == slices)
+        print("""
+              PAR2 verify harness: \(megabytes) MB payload, \(slices) slices
+              footprint: \(cost / 1024 / 1024) MB
+              """)
+        #expect(cost < 64 * 1024 * 1024)
+    }
 }
