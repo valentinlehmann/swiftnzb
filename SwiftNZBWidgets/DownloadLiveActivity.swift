@@ -21,31 +21,40 @@ struct DownloadLiveActivity: Widget {
         } dynamicIsland: { context in
             let state = context.state
             return DynamicIsland {
+                // Leading/trailing sit beside the camera and are only a few points wide: an icon
+                // and a single-line value fit there, a job name does not. The name goes in the
+                // center (the title slot), and the progress bar spans the full bottom width.
                 DynamicIslandExpandedRegion(.leading) {
-                    Label(state.jobName, systemImage: icon(state))
-                        .font(.caption)
-                        .lineLimit(1)
+                    Image(systemName: icon(state))
+                        .font(.title3)
                         .foregroundStyle(tint(state))
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     Text(verbatim: percentText(state))
-                        .font(.caption)
+                        .font(.callout)
                         .monospacedDigit()
+                        .lineLimit(1)
+                        .fixedSize()
                         .foregroundStyle(.secondary)
                 }
                 DynamicIslandExpandedRegion(.center) {
-                    ProgressView(value: state.fractionComplete)
-                        .tint(tint(state))
+                    Text(state.jobName)
+                        .font(.callout.weight(.medium))
+                        .lineLimit(1)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    HStack {
-                        subtitle(state)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        eta(state)
-                        actionButton(context)
+                    VStack(spacing: 8) {
+                        ProgressView(value: state.fractionComplete)
+                            .tint(tint(state))
+                        HStack {
+                            subtitle(state)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            eta(state)
+                            actionButton(context)
+                        }
+                        .font(.caption)
                     }
-                    .font(.caption)
                 }
             } compactLeading: {
                 Image(systemName: icon(state))
@@ -172,3 +181,36 @@ struct DownloadLiveActivity: Widget {
         return .accentColor
     }
 }
+
+#if DEBUG
+private extension DownloadActivityAttributes.ContentState {
+    static let paused = Self(jobName: "ubuntu-24.04-desktop-amd64", fractionComplete: 0.64,
+                             bytesPerSecond: 0, etaDeadline: nil, stepRaw: nil,
+                             isPaused: true, isWaitingForNetwork: false, additionalJobCount: 0)
+    static let downloading = Self(jobName: "ubuntu-24.04-desktop-amd64", fractionComplete: 0.37,
+                                  bytesPerSecond: 48_000_000, etaDeadline: .now.addingTimeInterval(754),
+                                  stepRaw: nil, isPaused: false, isWaitingForNetwork: false,
+                                  additionalJobCount: 0)
+}
+
+private let previewAttributes = DownloadActivityAttributes(jobID: "preview")
+
+#Preview("Expanded", as: .dynamicIsland(.expanded), using: previewAttributes) {
+    DownloadLiveActivity()
+} contentStates: {
+    DownloadActivityAttributes.ContentState.paused
+    DownloadActivityAttributes.ContentState.downloading
+}
+
+#Preview("Compact", as: .dynamicIsland(.compact), using: previewAttributes) {
+    DownloadLiveActivity()
+} contentStates: {
+    DownloadActivityAttributes.ContentState.downloading
+}
+
+#Preview("Lock Screen", as: .content, using: previewAttributes) {
+    DownloadLiveActivity()
+} contentStates: {
+    DownloadActivityAttributes.ContentState.paused
+}
+#endif
