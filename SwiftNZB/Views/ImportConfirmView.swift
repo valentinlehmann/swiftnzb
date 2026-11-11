@@ -127,7 +127,10 @@ struct ImportConfirmView: View {
             }
         } header: {
             HStack {
-                Text("Files") + Text(verbatim: " (\(selected.count)/\(job.files.count))")
+                HStack(spacing: 0) {
+                    Text("Files")
+                    Text(verbatim: " (\(selected.count)/\(job.files.count))")
+                }
                 Spacer()
                 Button(allSelected ? "Deselect All" : "Select All") {
                     selected = allSelected ? [] : Set(job.files.map(\.id))
